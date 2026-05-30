@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def run_batch(maze_path: str) -> None:
     import matplotlib
-    matplotlib.use('Agg')  # backend não-interativo para batch
+    matplotlib.use('Agg')  #  backend não-interativo para batch
 
     from core.maze import Maze
     from core.metrics import save_csv, plot_convergence, plot_comparison_bar
