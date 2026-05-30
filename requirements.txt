@@ -1,0 +1,4 @@
+ttkthemes
+matplotlib
+pillow
+numpy
