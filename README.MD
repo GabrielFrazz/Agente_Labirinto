@@ -2,19 +2,25 @@
 
 O projeto já conta com um ambiente virtual (`venv`) configurado para Python 3.14. Para rodar o programa, basta seguir os passos abaixo no seu terminal (cmd ou PowerShell):
 
-### 1. Ative o ambiente virtual
+### 1. Criar ambiente venv
+
+**No Windows:**
+
+python -m venv venv
+
+### 2. Ative o ambiente virtual
 **No Windows:**
 ```cmd
 venv\Scripts\activate
 ```
 
-### 2. Instale as dependências
+### 3. Instale as dependências
 Caso ainda não tenha instalado as bibliotecas necessárias (como `matplotlib` e `ttkthemes`):
 ```cmd
 pip install -r requirements.txt
 ```
 
-### 3. Inicie o Programa
+### 4. Inicie o Programa
 
 Você tem duas formas de utilizar o projeto:
 
