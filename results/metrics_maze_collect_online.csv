@@ -1,2 +1,0 @@
-algorithm,success,total_moves,cost_real,cells_revealed,cells_revisited,replannings,time_ms,offline_optimal,online_ratio
-Online,True,41,41,92,5,36,2896.9997000021976,13,3.1538461538461537

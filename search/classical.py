@@ -1,7 +1,3 @@
-"""
-BFS, DFS, UCS, Gulosa, e A*.
-"""
-
 from collections import deque
 import heapq
 import time
@@ -14,15 +10,15 @@ def manhattan(a, b) -> int:
 def _fail_result(visited: set, expanded: int, elapsed_ms: float,
                  max_frontier: int) -> dict:
     return {
-        'success':      False,
-        'path':         [],
-        'cost':         0,
-        'steps':        0,
-        'explored':     len(visited),
-        'expanded':     expanded,
-        'time_ms':      elapsed_ms,
-        'max_frontier': max_frontier,
-        '_explored_set': visited,
+        'sucesso':      False,
+        'caminho':         [],
+        'custo':         0,
+        'passos':        0,
+        'explorados':     len(visited),
+        'expandidos':     expanded,
+        'tempo_ms':      elapsed_ms,
+        'fronteira_max': max_frontier,
+        '_conjunto_explorados': visited,
     }
 
 
@@ -30,15 +26,15 @@ def _success_result(path: list, visited: set, expanded: int,
                     elapsed_ms: float, max_frontier: int) -> dict:
     steps = len(path) - 1
     return {
-        'success':      True,
-        'path':         path,
-        'cost':         steps,
-        'steps':        steps,
-        'explored':     len(visited),
-        'expanded':     expanded,
-        'time_ms':      elapsed_ms,
-        'max_frontier': max_frontier,
-        '_explored_set': visited,
+        'sucesso':      True,
+        'caminho':         path,
+        'custo':         steps,
+        'passos':        steps,
+        'explorados':     len(visited),
+        'expandidos':     expanded,
+        'tempo_ms':      elapsed_ms,
+        'fronteira_max': max_frontier,
+        '_conjunto_explorados': visited,
     }
 
 def bfs(maze, start, goal) -> dict:

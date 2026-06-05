@@ -30,7 +30,7 @@ CELL_COLORS = {
     '?':  '#888780',
     '*':  '#D14520',
     'PATH':     '#EF9F27',
-    'EXPLORED': '#FAEEDA',
+    'EXPLORED': '#3E77B6',
 }
 
 ALG_MAP = {
@@ -44,7 +44,7 @@ ALG_MAP = {
     'Hill-Climbing':  'hc',
     'SA':             'sa',
     '— ONLINE —':     None,
-    'Online':         'online',
+    'Replanning com A*': 'online',
 }
 
 CLASSICAL_ALGS = {'bfs', 'dfs', 'ucs', 'greedy', 'astar'}
@@ -68,6 +68,8 @@ def draw_maze_on_canvas(
 
     canvas.config(scrollregion=(0, 0, cols * cell_size, rows * cell_size))
 
+    c_counter = 0
+
     for r in range(rows):
         for c in range(len(grid[r])):
             ch = grid[r][c]
@@ -90,10 +92,15 @@ def draw_maze_on_canvas(
             canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline='#d0d0d0', width=1)
 
             if ch in ('A', 'B', 'C', '*'):
+                text_to_draw = ch
+                if ch == 'C':
+                    text_to_draw = f"C{c_counter}"
+                    c_counter += 1
+                    
                 canvas.create_text(
                     (x1 + x2) // 2, (y1 + y2) // 2,
-                    text=ch, fill='white',
-                    font=('Consolas', max(8, cell_size // 2), 'bold'),
+                    text=text_to_draw, fill='white',
+                    font=('Consolas', max(7, int(cell_size * 0.4)), 'bold'),
                 )
 
     if highlight:
@@ -131,7 +138,6 @@ class MazeApp:
         ttk.Button(ctrl_frame, text='Carregar Labirinto', command=self.load_maze).pack(side=tk.LEFT, padx=4)
         ttk.Button(ctrl_frame, text='Executar', command=self.run_algorithm).pack(side=tk.LEFT, padx=4)
         ttk.Button(ctrl_frame, text='Limpar', command=self._clear).pack(side=tk.LEFT, padx=4)
-        ttk.Button(ctrl_frame, text='Exportar CSV', command=self.export_csv).pack(side=tk.LEFT, padx=4)
         ttk.Button(ctrl_frame, text='Sair', command=self.master.destroy).pack(side=tk.LEFT, padx=4)
 
 
@@ -139,11 +145,13 @@ class MazeApp:
 
         ttk.Label(ctrl_frame, text='Algoritmo:').pack(side=tk.LEFT, padx=(4, 2))
         self._alg_var = tk.StringVar(value='BFS')
+        self._prev_alg = 'BFS'
         alg_combo = ttk.Combobox(
             ctrl_frame, textvariable=self._alg_var,
-            values=list(ALG_MAP.keys()), state='readonly', width=16,
+            values=list(ALG_MAP.keys()), state='readonly', width=20,
         )
         alg_combo.pack(side=tk.LEFT, padx=2)
+        alg_combo.bind('<<ComboboxSelected>>', self._on_alg_selected)
 
         ttk.Separator(ctrl_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=8)
 
@@ -207,6 +215,13 @@ class MazeApp:
         )
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
+
+    def _on_alg_selected(self, _event=None) -> None:
+        selected = self._alg_var.get()
+        if ALG_MAP.get(selected) is None:
+            self._alg_var.set(self._prev_alg)
+        else:
+            self._prev_alg = selected
 
     def load_maze(self) -> None:
         filepath = filedialog.askopenfilename(
@@ -286,9 +301,9 @@ class MazeApp:
             else:
                 result = simulated_annealing(self.maze, dist, nodes)
 
-            full_path = reconstruct_full_path(result['best_order'], nodes, self.maze)
-            result['path'] = full_path
-            result['_nodes'] = nodes
+            full_path = reconstruct_full_path(result['melhor_ordem'], nodes, self.maze)
+            result['caminho'] = full_path
+            result['_nos'] = nodes
 
             self._last_result = result
             self._last_alg_type = 'local'
@@ -310,7 +325,28 @@ class MazeApp:
             return
 
         agent = self._online_agent
-        status = agent.step()
+        delay = self._speed_var.get()
+
+        # O problema da lentidão é que draw_maze_on_canvas desenha milhares de retângulos
+        # a cada passo. Para acelerar, vamos agrupar passos antes de redesenhar a tela
+        # dependendo de quão rápido o usuário quer (menor delay = mais passos por frame).
+        if delay <= 2:
+            steps_per_frame = 15
+        elif delay <= 5:
+            steps_per_frame = 8
+        elif delay <= 10:
+            steps_per_frame = 4
+        elif delay <= 15:
+            steps_per_frame = 2
+        else:
+            steps_per_frame = 1
+
+        status = 'continue'
+        for _ in range(steps_per_frame):
+            status = agent.step()
+            if status != 'continue':
+                break
+
         cell_size = self._compute_cell_size()
         snapshot = agent.get_snapshot()
 
@@ -323,16 +359,16 @@ class MazeApp:
             self._animating = False
             elapsed = (time.perf_counter() - self._online_start_time) * 1000
             result = agent.run.__wrapped__(agent) if hasattr(agent.run, '__wrapped__') else {
-                'success': True,
-                'total_moves': agent.total_moves,
-                'cost_real': agent.total_moves,
-                'cells_revealed': len(agent.cells_revealed),
-                'cells_revisited': agent.cells_revisited,
-                'replannings': agent.replannings,
-                'path_taken': agent.path_taken,
-                'time_ms': elapsed,
-                'offline_optimal': None,
-                'online_ratio': None,
+                'sucesso': True,
+                'movimentos_totais': agent.total_moves,
+                'custo_real': agent.total_moves,
+                'celulas_reveladas': len(agent.cells_revealed),
+                'celulas_revisitadas': agent.cells_revisited,
+                'replanejamentos': agent.replannings,
+                'caminho_percorrido': agent.path_taken,
+                'tempo_ms': elapsed,
+                'otimo_offline': None,
+                'razao_online': None,
             }
             result = compute_online_ratio(result, self.maze)
             self._last_result = result
@@ -342,16 +378,16 @@ class MazeApp:
             self._animating = False
             elapsed = (time.perf_counter() - self._online_start_time) * 1000
             self._last_result = {
-                'success': False,
-                'total_moves': agent.total_moves,
-                'cost_real': agent.total_moves,
-                'cells_revealed': len(agent.cells_revealed),
-                'cells_revisited': agent.cells_revisited,
-                'replannings': agent.replannings,
-                'path_taken': agent.path_taken,
-                'time_ms': elapsed,
-                'offline_optimal': None,
-                'online_ratio': None,
+                'sucesso': False,
+                'movimentos_totais': agent.total_moves,
+                'custo_real': agent.total_moves,
+                'celulas_reveladas': len(agent.cells_revealed),
+                'celulas_revisitadas': agent.cells_revisited,
+                'replanejamentos': agent.replannings,
+                'caminho_percorrido': agent.path_taken,
+                'tempo_ms': elapsed,
+                'otimo_offline': None,
+                'razao_online': None,
             }
             self._last_alg_type = 'online'
             self._on_result_ready()
@@ -370,33 +406,33 @@ class MazeApp:
 
         if self._last_alg_type == 'classical':
             metrics = [
-                ('Sucesso', '✓' if result['success'] else '✗'),
-                ('Custo do caminho', result['cost']),
-                ('Passos', result['steps']),
-                ('Nós explorados', result['explored']),
-                ('Nós expandidos', result['expanded']),
-                ('Tempo (ms)', f"{result['time_ms']:.2f}"),
-                ('Fronteira máxima', result['max_frontier']),
+                ('Sucesso', '✓' if result['sucesso'] else '✗'),
+                ('Custo do caminho', result['custo']),
+                ('Passos', result['passos']),
+                ('Nós explorados', result['explorados']),
+                ('Nós expandidos', result['expandidos']),
+                ('Tempo (ms)', f"{result['tempo_ms']:.2f}"),
+                ('Fronteira máxima', result['fronteira_max']),
             ]
         elif self._last_alg_type == 'local':
             metrics = [
-                ('Melhor custo', result['best_cost']),
-                ('Pior custo', result['worst_cost']),
-                ('Custo médio', f"{result['mean_cost']:.2f}"),
-                ('Tempo (ms)', f"{result['time_ms']:.2f}"),
-                ('Iterações', result.get('iterations', result.get('runs_done', '-'))),
+                ('Melhor custo', result['melhor_custo']),
+                ('Pior custo', result['pior_custo']),
+                ('Custo médio', f"{result['custo_medio']:.2f}"),
+                ('Tempo (ms)', f"{result['tempo_ms']:.2f}"),
+                ('Iterações', result.get('iteracoes', result.get('execucoes', '-'))),
             ]
         elif self._last_alg_type == 'online':
             metrics = [
-                ('Sucesso', '✓' if result['success'] else '✗'),
-                ('Movimentos totais', result['total_moves']),
-                ('Custo real', result['cost_real']),
-                ('Células reveladas', result['cells_revealed']),
-                ('Células revisitadas', result['cells_revisited']),
-                ('Replanejamentos', result['replannings']),
-                ('Custo ótimo offline', result.get('offline_optimal', '-')),
+                ('Sucesso', '✓' if result['sucesso'] else '✗'),
+                ('Movimentos totais', result['movimentos_totais']),
+                ('Custo real', result['custo_real']),
+                ('Células reveladas', result['celulas_reveladas']),
+                ('Células revisitadas', result['celulas_revisitadas']),
+                ('Replanejamentos', result['replanejamentos']),
+                ('Custo ótimo offline', result.get('otimo_offline', '-')),
                 ('Razão online/offline',
-                 f"{result['online_ratio']:.2f}" if result.get('online_ratio') else '-'),
+                 f"{result['razao_online']:.2f}" if result.get('razao_online') else '-'),
             ]
         else:
             metrics = []
@@ -404,28 +440,36 @@ class MazeApp:
         for metric, value in metrics:
             tree.insert('', tk.END, values=(metric, value))
 
-        row = {'algorithm': self._alg_var.get()}
+        row = {'algoritmo': self._alg_var.get()}
         row.update({k: v for k, v in result.items()
-                    if k not in ('path', 'path_taken', 'cost_history', '_nodes', '_explored_set')})
+                    if k not in ('caminho', 'caminho_percorrido', 'caminho_offline', 'historico_custo', '_nos', '_conjunto_explorados')})
         self._results_history.append(row)
 
         maze_basename = os.path.basename(self.maze.filepath)
         maze_name = os.path.splitext(maze_basename)[0]
         csv_filename = f"metrics_{maze_name}_{self._last_alg_type}.csv"
-        csv_path = os.path.join(os.path.dirname(__file__), 'results', csv_filename)
+        csv_path = os.path.join(os.path.dirname(__file__), 'results', maze_name, csv_filename)
         try:
+            os.makedirs(os.path.dirname(csv_path), exist_ok=True)
             save_csv([row], csv_path, append=True)
         except Exception as e:
             print(f"Erro ao salvar CSV automático: {e}")
 
-        success = result.get('success', True)
+        # Gerar gráficos de comparação para buscas clássicas
+        if self._last_alg_type == 'classical':
+            self._generate_classical_comparison_plots(csv_path, maze_name)
+
+        success = result.get('sucesso', True)
         self._status_var.set(
             f"{self._alg_var.get()}: {'Concluído ✓' if success else 'Falhou ✗'}")
 
-        path = result.get('path', [])
+        path = result.get('caminho', [])
         if self._last_alg_type in ('classical', 'local') and path:
             self._animating = True
             self._animate_path(path, 0)
+        elif self._last_alg_type == 'online':
+            self._redraw_result()
+            self._show_online_comparison(result)
         else:
             self._redraw_result()
 
@@ -439,10 +483,10 @@ class MazeApp:
         if index == 0:
             highlight = None
             explored = None
-            if self._last_alg_type == 'local' and self._last_result.get('_nodes'):
-                highlight = self._last_result['_nodes'][1:-1]
+            if self._last_alg_type == 'local' and self._last_result.get('_nos'):
+                highlight = self._last_result['_nos'][1:-1]
             if self._show_explored_var.get() and self._last_alg_type == 'classical':
-                explored = self._last_result.get('_explored_set')
+                explored = self._last_result.get('_conjunto_explorados')
             draw_maze_on_canvas(self.canvas, self.maze.grid, cell_size, path=[], explored=explored, highlight=highlight)
 
         if index > 0 and index <= len(path):
@@ -476,10 +520,10 @@ class MazeApp:
             draw_maze_on_canvas(self.canvas, self.maze.grid, cell_size)
             return
 
-        path = result.get('path', result.get('path_taken', []))
+        path = result.get('caminho', result.get('caminho_percorrido', []))
         explored = None
         if self._show_explored_var.get() and self._last_alg_type == 'classical':
-            explored = result.get('_explored_set')
+            explored = result.get('_conjunto_explorados')
 
         if self._last_alg_type == 'online':
             if self._online_agent:
@@ -489,73 +533,247 @@ class MazeApp:
                 draw_maze_on_canvas(self.canvas, self.maze.grid, cell_size, path=path)
         else:
             highlight = None
-            if self._last_alg_type == 'local' and result.get('_nodes'):
-                highlight = result['_nodes'][1:-1]  # pontos C
+            if self._last_alg_type == 'local' and result.get('_nos'):
+                highlight = result['_nos'][1:-1]  # pontos C
             draw_maze_on_canvas(
                 self.canvas, self.maze.grid, cell_size,
                 path=path, explored=explored, highlight=highlight,
             )
 
     def _show_convergence(self, result: dict, alg_name: str) -> None:
-        history = result.get('cost_history', [])
-        if not history:
+
+        if alg_name != 'sa':
+            history = result.get('historico_custo', [])
+
+            if not history:
+                return
+
+            iterations = list(range(1, len(history) + 1))
+
+            max_points = 300
+            if len(history) > max_points:
+                step = len(history) / max_points
+                iterations = [int(i * step) + 1 for i in range(max_points)]
+                history = [history[int(i * step)] for i in range(max_points)]
+
+            win = tk.Toplevel(self.master)
+            win.title('Convergência — Hill-Climbing')
+            win.geometry('700x500')
+
+            fig, ax = plt.subplots(figsize=(7, 5))
+
+            ax.plot(iterations, history, linewidth=2)
+
+            ax.set_title('Convergência — Hill-Climbing')
+            ax.set_xlabel('Iteração')
+            ax.set_ylabel('Melhor custo')
+            ax.grid(True, alpha=0.3)
+
+            fig.tight_layout()
+
+            maze_basename = os.path.basename(self.maze.filepath)
+            maze_name = os.path.splitext(maze_basename)[0]
+            plot_path = os.path.join(os.path.dirname(__file__), 'results', maze_name, 'plots', f"conv_{maze_name}_{alg_name}.png")
+            try:
+                os.makedirs(os.path.dirname(plot_path), exist_ok=True)
+                fig.savefig(plot_path)
+            except Exception as e:
+                pass
+
+            canvas_fig = FigureCanvasTkAgg(fig, master=win)
+            canvas_fig.draw()
+            canvas_fig.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
             return
 
-        # Downsample para melhorar a leitura e não travar o plot
-        max_points = 200
-        if len(history) > max_points:
-            step = len(history) / max_points
-            history = [history[int(i * step)] for i in range(max_points)]
+        current_history = result.get("historico_current", [])
+        best_history = result.get("historico_best", [])
+        temperature_history = result.get("historico_temperatura", [])
 
-        title = 'Hill-Climbing' if alg_name == 'hc' else 'Simulated Annealing'
-        
-        # Auto-exportar gráfico
-        maze_basename = os.path.basename(self.maze.filepath)
-        maze_name = os.path.splitext(maze_basename)[0]
-        plot_path = os.path.join(os.path.dirname(__file__), 'results', 'plots', f"conv_{maze_name}_{alg_name}.png")
-        try:
-            from core.metrics import plot_convergence
-            plot_convergence({title: history}, title=f"Convergência — {title}", save_path=plot_path)
-        except Exception as e:
-            print(f"Erro ao salvar gráfico automático: {e}")
+        if not current_history:
+            return
+
+        max_points = 500
+
+        def downsample(data):
+            if len(data) <= max_points:
+                return data
+
+            step = len(data) / max_points
+
+            return [
+                data[int(i * step)]
+                for i in range(max_points)
+            ]
+
+        current_history = downsample(current_history)
+        best_history = downsample(best_history)
+        temperature_history = downsample(temperature_history)
+
+        iterations = list(range(len(current_history)))
 
         win = tk.Toplevel(self.master)
-        win.title(f'Convergência — {title}')
-        win.geometry('640x480')
+        win.title("Simulated Annealing — Diagnóstico")
+        win.geometry("900x900")
 
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.plot(history, color='#E85D24', linewidth=1.5, label=title)
-        ax.set_title(f'Convergência — {title}')
-        ax.set_xlabel('Iteração')
-        ax.set_ylabel('Melhor custo')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
+        fig, axes = plt.subplots(3, 1, figsize=(8, 9))
+
+        axes[0].plot(
+            iterations,
+            current_history,
+            linewidth=1.2
+        )
+
+        axes[0].set_title("Custo Atual (Exploração)")
+        axes[0].set_ylabel("Custo")
+        axes[0].grid(True, alpha=0.3)
+
+        axes[1].plot(
+            iterations,
+            best_history,
+            linewidth=2
+        )
+
+        axes[1].set_title("Melhor Custo Encontrado")
+        axes[1].set_ylabel("Custo")
+        axes[1].grid(True, alpha=0.3)
+
+        axes[2].plot(
+            iterations,
+            temperature_history,
+            linewidth=2
+        )
+
+        axes[2].set_title("Temperatura")
+        axes[2].set_xlabel("Iteração")
+        axes[2].set_ylabel("T")
+        axes[2].grid(True, alpha=0.3)
+
         fig.tight_layout()
+
+        # Restaurando o salvamento automático do gráfico
+        maze_basename = os.path.basename(self.maze.filepath)
+        maze_name = os.path.splitext(maze_basename)[0]
+        plot_path = os.path.join(os.path.dirname(__file__), 'results', maze_name, 'plots', f"conv_{maze_name}_{alg_name}.png")
+        try:
+            os.makedirs(os.path.dirname(plot_path), exist_ok=True)
+            fig.savefig(plot_path)
+            print(f"Gráfico de diagnóstico salvo em: {plot_path}")
+        except Exception as e:
+            print(f"Erro ao salvar gráfico automático: {e}")
 
         canvas_fig = FigureCanvasTkAgg(fig, master=win)
         canvas_fig.draw()
         canvas_fig.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
 
-    def export_csv(self) -> None:
-        if not self._results_history:
-            messagebox.showwarning('Aviso', 'Nenhum resultado para exportar.')
+    def _show_online_comparison(self, result: dict) -> None:
+        online_path = result.get('caminho_percorrido', [])
+        offline_path = result.get('caminho_offline', [])
+
+        if not online_path and not offline_path:
             return
 
-        filepath = filedialog.asksaveasfilename(
-            title='Salvar resultados como CSV',
-            defaultextension='.csv',
-            filetypes=[('CSV', '*.csv')],
-            initialdir=os.path.join(os.path.dirname(__file__), 'results'),
-        )
-        if not filepath:
-            return
+        win = tk.Toplevel(self.master)
+        win.title('Comparação — Online vs Offline')
+        win.geometry('1100x560')
+
+        # --- Lado esquerdo: caminho online ---
+        left_frame = ttk.LabelFrame(win, text='Caminho Online (Replanning com A*)', padding=4)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(6, 3), pady=6)
+
+        online_cost = result.get('custo_real', len(online_path) - 1)
+        ttk.Label(left_frame, text=f'Movimentos: {online_cost}',
+                  font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W, pady=(0, 4))
+
+        left_canvas = tk.Canvas(left_frame, bg='#e8e8e4')
+        left_h = ttk.Scrollbar(left_frame, orient=tk.HORIZONTAL, command=left_canvas.xview)
+        left_v = ttk.Scrollbar(left_frame, orient=tk.VERTICAL, command=left_canvas.yview)
+        left_canvas.config(xscrollcommand=left_h.set, yscrollcommand=left_v.set)
+        left_v.pack(side=tk.RIGHT, fill=tk.Y)
+        left_h.pack(side=tk.BOTTOM, fill=tk.X)
+        left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # --- Lado direito: caminho offline ótimo ---
+        right_frame = ttk.LabelFrame(win, text='Caminho Ótimo Offline (A*)', padding=4)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(3, 6), pady=6)
+
+        offline_cost = result.get('otimo_offline', len(offline_path) - 1 if offline_path else '-')
+        ratio = result.get('razao_online')
+        ratio_txt = f'  |  Razão: {ratio:.2f}x' if ratio else ''
+        ttk.Label(right_frame, text=f'Passos: {offline_cost}{ratio_txt}',
+                  font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W, pady=(0, 4))
+
+        right_canvas = tk.Canvas(right_frame, bg='#e8e8e4')
+        right_h = ttk.Scrollbar(right_frame, orient=tk.HORIZONTAL, command=right_canvas.xview)
+        right_v = ttk.Scrollbar(right_frame, orient=tk.VERTICAL, command=right_canvas.yview)
+        right_canvas.config(xscrollcommand=right_h.set, yscrollcommand=right_v.set)
+        right_v.pack(side=tk.RIGHT, fill=tk.Y)
+        right_h.pack(side=tk.BOTTOM, fill=tk.X)
+        right_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Calcular cell_size com base no tamanho da janela
+        cell_size = max(min(500 // max(self.maze.cols, 1),
+                            480 // max(self.maze.rows, 1), 40), 8)
+
+        draw_maze_on_canvas(left_canvas, self.maze.grid, cell_size, path=online_path)
+        draw_maze_on_canvas(right_canvas, self.maze.grid, cell_size, path=offline_path)
+
+    def _generate_classical_comparison_plots(self, csv_path: str, maze_name: str) -> None:
+        """Lê o CSV acumulado de métricas clássicas deste labirinto e gera
+        gráficos de barras comparando nós expandidos e tempo de execução.
+        Usa apenas a última execução de cada algoritmo."""
+        import csv as csv_mod
 
         try:
-            save_csv(self._results_history, filepath)
-            messagebox.showinfo('Exportado', f'Resultados salvos em:\n{filepath}')
-        except Exception as e:
-            messagebox.showerror('Erro', str(e))
+            with open(csv_path, newline='', encoding='utf-8') as fh:
+                reader = csv_mod.DictReader(fh)
+                rows = list(reader)
+        except Exception:
+            return
+
+        if not rows:
+            return
+
+        # Manter apenas a última execução de cada algoritmo
+        latest: dict[str, dict] = {}
+        for r in rows:
+            latest[r['algoritmo']] = r
+
+        expanded_data: dict[str, int] = {}
+        time_data: dict[str, float] = {}
+
+        for alg, r in latest.items():
+            success = r.get('sucesso', 'True')
+            if str(success) not in ('True', 'true', '1'):
+                continue
+            try:
+                expanded_data[alg] = int(r['expandidos'])
+            except (KeyError, ValueError):
+                pass
+            try:
+                time_data[alg] = float(r['tempo_ms'])
+            except (KeyError, ValueError):
+                pass
+
+        plots_dir = os.path.join(os.path.dirname(__file__), 'results', maze_name, 'plots')
+        os.makedirs(plots_dir, exist_ok=True)
+
+        if expanded_data:
+            plot_comparison_bar(
+                expanded_data,
+                title=f'Nós Expandidos — {maze_name}',
+                ylabel='Nós expandidos',
+                save_path=os.path.join(plots_dir, f'classical_expanded_{maze_name}.png'),
+            )
+
+        if time_data:
+            plot_comparison_bar(
+                time_data,
+                title=f'Tempo de Execução — {maze_name}',
+                ylabel='Tempo (ms)',
+                save_path=os.path.join(plots_dir, f'classical_time_{maze_name}.png'),
+            )
 
 
     def _compute_cell_size(self) -> int:

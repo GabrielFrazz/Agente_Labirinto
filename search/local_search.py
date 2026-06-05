@@ -15,8 +15,8 @@ def precompute_distances(maze) -> tuple[dict, list]:
     for i in range(len(nodes)):
         for j in range(i + 1, len(nodes)):
             result = astar(maze, nodes[i], nodes[j])
-            if result["success"]:
-                cost = result["cost"]
+            if result["sucesso"]:
+                cost = result["custo"]
             else:
                 cost = float("inf")
             dist[(nodes[i], nodes[j])] = cost
@@ -111,48 +111,60 @@ def hill_climbing(maze, dist, nodes, restarts=30) -> dict:
     t1 = time.perf_counter()
 
     return {
-        "best_order": global_best_order,
-        "best_cost": global_best_cost,
-        "worst_cost": worst_cost,
-        "mean_cost": cost_sum / restarts,
-        "restarts_done": restarts,
-        "iterations": total_iterations,
-        "time_ms": (t1 - t0) * 1000.0,
-        "cost_history": cost_history,
+        "melhor_ordem": global_best_order,
+        "melhor_custo": global_best_cost,
+        "pior_custo": worst_cost,
+        "custo_medio": cost_sum / restarts,
+        "reinicializacoes": restarts,
+        "iteracoes": total_iterations,
+        "tempo_ms": (t1 - t0) * 1000.0,
+        "historico_custo": cost_history,
     }
 
 
 def simulated_annealing(
-    maze, dist, nodes, T0=1000.0, alpha=0.995, max_iter=10000, runs=5
+    maze, dist, nodes, T0=1000.0, alpha=0.998, max_iter=10000, runs=5
 ) -> dict:
     t0 = time.perf_counter()
 
     k = len(nodes) - 2
+
     global_best_order = None
     global_best_cost = float("inf")
     worst_cost = float("-inf")
     cost_sum = 0.0
-    last_run_history = []
+
+    last_best_history = []
+    last_current_history = []
+    last_temperature_history = []
 
     for _run in range(runs):
-        # Random initial solution
+
         current_order = list(range(k))
         random.shuffle(current_order)
+
         current_cost = solution_cost(current_order, dist, nodes)
 
         run_best_order = current_order[:]
         run_best_cost = current_cost
+
         T = T0
-        run_history = []
+
+        best_history = []
+        current_history = []
+        temperature_history = []
 
         for _it in range(max_iter):
+
             i = random.randint(0, k - 1)
             j = random.randint(0, k - 1)
+
             while j == i:
                 j = random.randint(0, k - 1)
 
             neighbor = current_order[:]
             neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
+
             neighbor_cost = solution_cost(neighbor, dist, nodes)
 
             delta = neighbor_cost - current_cost
@@ -161,10 +173,8 @@ def simulated_annealing(
                 current_order = neighbor
                 current_cost = neighbor_cost
             else:
-                if T > 0:
-                    prob = math.exp(-delta / T)
-                else:
-                    prob = 0.0
+                prob = math.exp(-delta / T) if T > 0 else 0.0
+
                 if random.random() < prob:
                     current_order = neighbor
                     current_cost = neighbor_cost
@@ -173,9 +183,11 @@ def simulated_annealing(
                 run_best_cost = current_cost
                 run_best_order = current_order[:]
 
-            T *= alpha
+            current_history.append(current_cost)
+            best_history.append(run_best_cost)
+            temperature_history.append(T)
 
-            run_history.append(run_best_cost)
+            T *= alpha
 
         if run_best_cost < global_best_cost:
             global_best_cost = run_best_cost
@@ -185,20 +197,27 @@ def simulated_annealing(
             worst_cost = run_best_cost
 
         cost_sum += run_best_cost
-        last_run_history = run_history
+
+        last_best_history = best_history
+        last_current_history = current_history
+        last_temperature_history = temperature_history
 
     t1 = time.perf_counter()
 
     return {
-        "best_order": global_best_order,
-        "best_cost": global_best_cost,
-        "worst_cost": worst_cost,
-        "mean_cost": cost_sum / runs,
-        "runs_done": runs,
-        "time_ms": (t1 - t0) * 1000.0,
-        "cost_history": last_run_history,
+        "melhor_ordem": global_best_order,
+        "melhor_custo": global_best_cost,
+        "pior_custo": worst_cost,
+        "custo_medio": cost_sum / runs,
+        "execucoes": runs,
+        "tempo_ms": (t1 - t0) * 1000.0,
+
+        "historico_best": last_best_history,
+        "historico_current": last_current_history,
+        "historico_temperatura": last_temperature_history,
+
         "T0": T0,
-        "alpha": alpha,
+        "alfa": alpha,
         "max_iter": max_iter,
     }
 
@@ -218,10 +237,10 @@ def reconstruct_full_path(
 
     for i in range(len(waypoints) - 1):
         result = astar(maze, waypoints[i], waypoints[i + 1])
-        if not result["success"]:
+        if not result["sucesso"]:
             return []
 
-        segment = result["path"]
+        segment = result["caminho"]
         if full_path:
             segment = segment[1:]
         full_path.extend(segment)

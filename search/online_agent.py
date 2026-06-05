@@ -36,9 +36,8 @@ class OnlineAgent:
 
         if self.view.goal is not None:
             result = astar(self.view, self.pos, self.view.goal)
-            if result["success"]:
-                # result['path'] includes start; strip it
-                self.plan = result["path"][1:]
+            if result["sucesso"]:
+                self.plan = result["caminho"][1:]
                 return True
             return False
 
@@ -47,8 +46,8 @@ class OnlineAgent:
             return False
 
         result = astar(self.view, self.pos, target)
-        if result["success"]:
-            self.plan = result["path"][1:]
+        if result["sucesso"]:
+            self.plan = result["caminho"][1:]
             return True
         return False
 
@@ -119,16 +118,16 @@ class OnlineAgent:
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
 
         return {
-            "success": success,
-            "total_moves": self.total_moves,
-            "cost_real": self.total_moves,
-            "cells_revealed": len(self.cells_revealed),
-            "cells_revisited": self.cells_revisited,
-            "replannings": self.replannings,
-            "path_taken": list(self.path_taken),
-            "time_ms": elapsed_ms,
-            "offline_optimal": None,
-            "online_ratio": None,
+            "sucesso": success,
+            "movimentos_totais": self.total_moves,
+            "custo_real": self.total_moves,
+            "celulas_reveladas": len(self.cells_revealed),
+            "celulas_revisitadas": self.cells_revisited,
+            "replanejamentos": self.replannings,
+            "caminho_percorrido": list(self.path_taken),
+            "tempo_ms": elapsed_ms,
+            "otimo_offline": None,
+            "razao_online": None,
         }
 
     def get_snapshot(self) -> list[list[str]]:
@@ -141,16 +140,19 @@ class OnlineAgent:
 def compute_online_ratio(online_result: dict, real_maze) -> dict:
     offline = astar(real_maze, real_maze.start, real_maze.goal)
 
-    if offline["success"]:
-        offline_optimal = offline["cost"]
-        cost_real = online_result["cost_real"]
-        online_result["offline_optimal"] = offline_optimal
+    if offline["sucesso"]:
+        offline_optimal = offline["custo"]
+        cost_real = online_result["custo_real"]
+        online_result["otimo_offline"] = offline_optimal
+        online_result["caminho_offline"] = offline["caminho"]
         if offline_optimal > 0:
-            online_result["online_ratio"] = cost_real / offline_optimal
+            online_result["razao_online"] = cost_real / offline_optimal
         else:
-            online_result["online_ratio"] = 1.0 if cost_real == 0 else None
+            online_result["razao_online"] = 1.0 if cost_real == 0 else None
     else:
-        online_result["offline_optimal"] = None
-        online_result["online_ratio"] = None
+        online_result["otimo_offline"] = None
+        online_result["caminho_offline"] = []
+        online_result["razao_online"] = None
 
     return online_result
+
