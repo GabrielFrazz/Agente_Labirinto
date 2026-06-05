@@ -29,10 +29,3 @@ Abre a janela interativa onde você pode carregar labirintos, escolher o algorit
 ```cmd
 python main.py
 ```
-
-**Modo Lote (Batch CLI)**
-Executa todos os algoritmos (Clássicos, Locais e Online) de forma invisível e ultra-rápida no labirinto especificado, exportando diretamente todas as métricas, arquivos `.csv` e gráficos para a pasta `results/`.
-```cmd
-python main.py --batch mazes/maze_simple.txt
-```
-*(Substitua `mazes/maze_simple.txt` pelo caminho do labirinto que deseja testar)*.

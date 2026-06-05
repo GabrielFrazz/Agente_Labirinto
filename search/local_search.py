@@ -37,6 +37,9 @@ def solution_cost(order: list[int], dist: dict, nodes: list) -> float:
 
     for idx in range(len(order) - 1):
         a = nodes[order[idx] + 1]
+        #if(len(order) == 1):
+        #    b = nodes[order[idx] + 1]
+        #else:
         b = nodes[order[idx + 1] + 1]
         seg = dist[(a, b)]
         if seg == float("inf"):
@@ -128,6 +131,22 @@ def simulated_annealing(
     t0 = time.perf_counter()
 
     k = len(nodes) - 2
+
+    if (k<=1):
+        return {
+            "melhor_ordem": list(range(k)),
+            "melhor_custo": solution_cost(list(range(k)), dist, nodes),
+            "pior_custo": solution_cost(list(range(k)), dist, nodes),
+            "custo_medio": solution_cost(list(range(k)), dist, nodes),
+            "execucoes": runs,
+            "tempo_ms": (time.perf_counter() - t0) * 1000.0,
+            "historico_best": [solution_cost(list(range(k)), dist, nodes)],
+            "historico_current": [solution_cost(list(range(k)), dist, nodes)],
+            "historico_temperatura": [T0],
+            "T0": T0,
+            "alfa": alpha,
+            "max_iter": max_iter,
+        }
 
     global_best_order = None
     global_best_cost = float("inf")
