@@ -1,2 +1,0 @@
-algoritmo,sucesso,movimentos_totais,custo_real,celulas_reveladas,celulas_revisitadas,replanejamentos,tempo_ms,otimo_offline,razao_online
-Replanning com A*,True,1542,1542,2322,492,1050,32921.52200000055,558,2.763440860215054
