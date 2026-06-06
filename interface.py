@@ -293,10 +293,14 @@ class MazeApp:
             
         if sys.platform == 'win32':
             os.startfile(path)
-        elif sys.platform == 'darwin':
-            subprocess.run(['open', path])
         else:
-            subprocess.run(['xdg-open', path])
+            env = os.environ.copy()
+            env.pop("LD_LIBRARY_PATH", None)
+            
+            if sys.platform == 'darwin':
+                subprocess.run(['open', path], env=env)
+            else:
+                subprocess.run(['xdg-open', path], env=env)
 
     def choose_results_dir(self) -> None:
         folder = filedialog.askdirectory(
