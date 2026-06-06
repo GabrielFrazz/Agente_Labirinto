@@ -141,7 +141,9 @@ class MazeApp:
         self._animating = False
         self._processing = False
         self._results_history = []
-        self.results_dir = os.path.join(BASE_DIR, 'results')
+        self.maze_path: str = ''
+        self.results_dir = os.path.join(os.path.expanduser('~'), 'MazeSolver_Results')
+        self._prev_alg: str = 'A*'
 
         style = ttk.Style()
         style.configure('TButton', font=('Segoe UI', 10), padding=4)
