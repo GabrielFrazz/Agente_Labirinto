@@ -1,91 +1,114 @@
-#  Agente de Resolução de Labirintos
+# Agente de Resolução de Labirintos
 
-Uma aplicação para visualização, simulação e análise de desempenho de algoritmos de **Busca Clássica** e **Busca Local** operando labirintos, desenvolvida para a disciplina de Inteligência Artificial.
+> Aplicação para visualização, simulação e análise de algoritmos de **Busca Clássica** e **Busca Local** em labirintos, desenvolvida para a disciplina de Inteligência Artificial.
 
-##  Funcionalidades
-- **Buscas Não-Informadas e Heurísticas:** BFS, DFS, UCS, Greedy e A*.
-- **Otimização de Múltiplos Pontos (Busca Local):** Hill-Climbing e Simulated Annealing.
-- **Ambiente Dinâmico:** Agente Online A* com neblina e replanejamento dinâmico.
-- **Análise de Dados:** Exportação de métricas para CSV e geração de gráficos de convergência.
-- **Interface Gráfica:** Controle de velocidade de animação, métricas e atalhos de usabilidade.
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
+![Plataforma](https://img.shields.io/badge/Plataforma-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
+[![Releases](https://img.shields.io/badge/Download-Releases-orange?logo=github)](https://github.com/GabrielFrazz/V01_Agent/releases)
 
 ---
 
-##  1. Como Executar (Versões Compiladas)
+## Sumário
 
-Se você não possui o Python instalado e quer apenas testar a aplicação, baixe os executáveis prontos na aba **Releases** deste repositório no GitHub.
+- [Funcionalidades](#funcionalidades)
+- [Executando os Binários Compilados](#1-executando-os-binários-compilados)
+- [Executando o Código-Fonte](#2-executando-o-código-fonte)
+- [Formato de Labirintos](#formato-de-labirintos-suportados)
+- [Relatórios e Exportação](#relatórios-e-exportação)
 
-###  Windows
-Baixe o **`MazeSolver_Setup.exe`** ou o **`MazeSolver_Windows_Portable.zip`**.
-> **Nota:** Por não possuir uma assinatura digital comercial, o *Windows Defender* vai bloquear a primeira execução.
+---
 
-###  Linux
-Baixe o arquivo **`MazeSolver_Linux_Portable.tar.gz`** e extraia.
-1. Abra o terminal na pasta que foi extraída.
-2. Dê permissão de execução com o comando: `chmod +x MazeSolver`
-3. Execute o programa: `./MazeSolver`
+## Funcionalidades
 
-###  macOS
-Baixe o arquivo **`MazeSolver_macOS_Portable.zip`** e extraia para obter o aplicativo nativo `MazeSolver.app`.
-> **Nota** O *Gatekeeper* da Apple bloqueia a execução de apps não-assinados baixados da internet por padrão. Para liberar o aplicativo, abra o terminal na pasta onde ele foi extraído e rode o seguinte comando:
+| Categoria | Algoritmos / Recursos |
+|---|---|
+| Busca Não-Informada | BFS, DFS, UCS |
+| Busca Heurística | Greedy, A* |
+| Busca Local | Hill-Climbing, Simulated Annealing |
+| Ambiente Dinâmico | Replanning com A* |
+| Análise | Exportação CSV, gráficos de convergência |
+| Interface | Controle de velocidade, métricas em tempo real |
+
+---
+
+## 1. Executando os Binários Compilados
+
+Caso não possua o Python instalado, baixe o executável correspondente ao seu sistema operacional na página de **[Releases](https://github.com/GabrielFrazz/V01_Agent/releases)** deste repositório.
+
+### Windows
+
+Baixe o **`MazeSolver_Setup.exe`** (instalador) ou o **`MazeSolver_Windows_Portable.zip`** (versão portátil).
+
+> **Nota:** O Windows Defender pode bloquear a execução na primeira vez por ausência de assinatura digital comercial. Clique em **"Mais informações" → "Executar assim mesmo"** para prosseguir.
+
+### Linux
+
+Baixe o **`MazeSolver_Linux_Portable.tar.gz`**, extraia e execute:
+
+```bash
+chmod +x MazeSolver
+./MazeSolver
+```
+
+### macOS
+
+Baixe o **`MazeSolver_macOS_Portable.zip`** e extraia o `MazeSolver.app`.
+
+> **Nota:** O Gatekeeper da Apple bloqueia aplicativos não assinados por padrão. Para liberar a execução, rode o seguinte comando no terminal dentro da pasta onde o app foi extraído:
 > ```bash
 > xattr -cr MazeSolver.app
 > ```
 
 ---
 
-##  2. Como Executar (Código-Fonte)
+## 2. Executando o Código-Fonte
 
 ### Pré-requisitos
-- Python 3.10 ou superior
-- *(Apenas Linux)*: Ter o pacote base de renderização de janelas instalado (Ex no Ubuntu: `sudo apt install python3-tk`)
+
+- Python **3.10 ou superior**
+- *(Somente Linux)* Pacote de renderização de janelas: `sudo apt install python3-tk`
 
 ### Passo a Passo
 
-1. **Faça o clone ou baixe o repositório:**
-   ```bash
-   git clone <sua_url_do_github>
-   cd TrabalhoPratico
-   ```
+**1. Clone o repositório:**
+```bash
+git clone <url_do_repositório>
+cd TrabalhoPratico
+```
 
-2. **Crie o Ambiente Virtual (Recomendado):**
-   - **Windows:** `python -m venv .venv`
-   - **Linux / Mac:** `python3 -m venv .venv`
+**2. Crie e ative um ambiente virtual:**
 
-3. **Ative o Ambiente Virtual:**
-   - **Windows:** `.venv\Scripts\activate`
-   - **Linux / Mac:** `source .venv/bin/activate`
+| Sistema | Criar | Ativar |
+|---|---|---|
+| Windows | `python -m venv .venv` | `.venv\Scripts\activate` |
+| Linux / macOS | `python3 -m venv .venv` | `source .venv/bin/activate` |
 
-4. **Instale as dependências externas (Matplotlib, Pillow, etc):**
-   ```bash
-   pip install -r requirements.txt
-   ```
+**3. Instale as dependências:**
+```bash
+pip install -r requirements.txt
+```
 
-5. **Inicie a Aplicação Gráfica:**
-   ```bash
-   python main.py
-   ```
+**4. Inicie a aplicação:**
+```bash
+python main.py
+```
 
 ---
 
-##  Formato de Labirintos Suportados
+## Formato de Labirintos Suportados
 
-O aplicativo é capaz de ler qualquer labirinto no formato texto puro (`.txt`) mapeado em ASCII. O padrão interno que o sistema exige é o seguinte:
+O aplicativo lê arquivos de texto (`.txt`). Os caracteres reconhecidos são:
 
-- `#` -> Parede (caminho bloqueado)
-- `  ` (espaço) -> Caminho livre
-- `A` -> Ponto de Início - *Deve haver exatamente um*
-- `B` -> Objetivo Final - *Deve haver exatamente um*
-- `C` -> Ponto de Coleta - *Opcional, usado pela Busca Local (Hill Climbing / SA)*
+| Caractere | Significado |    Obrigatório    |
+|:---:|---|:-----------------:|
+| `#` | Parede (caminho bloqueado) |         ✓         |
+| ` ` | Caminho livre |        ✓          |
+| `A` | Ponto de início | ✓ (exatamente um) |
+| `B` | Objetivo final | ✓ (exatamente um) |
+| `C` | Ponto de coleta (Hill Climbing / SA) |     Opcional      |
 
-**Gerando novos labirintos:**
-Se você deseja gerar labirintos gigantes e aleatórios para testar o desempenho dos algoritmos, recomendamos a utilização da ferramenta online gratuita:
- **[ASCII Maze Generator](https://www.asciiart.eu/ascii-maze-generator)**
-
-> *Ao gerar no site, defina o "Theme" para Classic e troque os ponto inicial/final por A e B. Copie o texto gerado, cole em um arquivo `.txt`.*
-
-**Exemplo de Labirinto Válido:**
-```text
+**Exemplo:**
+```
 ###########
 #A # #    #
 # ## # ## #
@@ -99,10 +122,16 @@ Se você deseja gerar labirintos gigantes e aleatórios para testar o desempenho
 ###########
 ```
 
+**Dica de geração:**
+Utilize o gerador [ASCII Maze Generator](https://www.asciiart.eu/ascii-maze-generator). Defina o *Theme* como **Classic** e substitua os marcadores de início/fim por `A` e `B`, depois copie e cole em um arquivo (`.txt`).
+
 ---
 
-##  Onde ficam os relatórios?
-Ao finalizar uma busca com sucesso, o aplicativo salva as planilhas detalhadas em `.csv` e os gráficos comparativos `.png` em um diretório chamado `MazeSolver_Results`, localizado na **Pasta Pessoal (Home)** do seu usuário no sistema operacional. 
+## Relatórios e Exportação
 
-Você pode acessar essa pasta com um clique através do botão **"Abrir"** no painel direito da própria aplicação.
-Você também pode trocar diretório de salvamento na aplicação.
+Ao concluir uma busca com sucesso, o aplicativo salva automaticamente:
+
+- **Planilhas** em `.csv`
+- **Gráficos comparativos** em `.png`
+
+Os arquivos são gravados na pasta `MazeSolver_Results`, localizada na **pasta pessoal** do usuário. Você pode acessá-la diretamente pelo botão **"Abrir"** no painel lateral da aplicação, ou alterar o diretório de destino no canto inferior direito da aplicação.
