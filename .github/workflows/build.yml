@@ -39,11 +39,11 @@ jobs:
 
     - name: Build with PyInstaller (Windows)
       if: runner.os == 'Windows'
-      run: pyinstaller --noconsole --windowed --icon=maze.ico --add-data "mazes;mazes" --add-data "maze.ico;." --name MazeSolver main.py
+      run: pyinstaller --noconsole --windowed --icon=maze.ico --add-data "mazes;mazes" --add-data "maze.ico;." --hidden-import PIL._tkinter_finder --name MazeSolver main.py
 
     - name: Build with PyInstaller (Linux/macOS)
       if: runner.os != 'Windows'
-      run: pyinstaller --noconsole --windowed --icon=maze.ico --add-data "mazes:mazes" --add-data "maze.ico:." --name MazeSolver main.py
+      run: pyinstaller --noconsole --windowed --icon=maze.ico --add-data "mazes:mazes" --add-data "maze.ico:." --hidden-import PIL._tkinter_finder --name MazeSolver main.py
 
     - name: Package Windows Portable & Compile Installer
       if: runner.os == 'Windows'
@@ -75,8 +75,13 @@ jobs:
         name: "Maze Solver - Versão ${{ github.ref_name }}"
         body: |
           ## Agente de Resolução de Labirintos
+          ### Notas de Execução
+          Nenhuma das versões disponibilizadas requer a instalação prévia do interpretador Python ou de dependências no sistema operacional hospedeiro.
           
-          Aplicação para visualização, simulação e análise de desempenho de algoritmos de busca clássica e busca local em ambientes labirintos.
+          ### Notas da Atualização (v1.0.1)
+          - **Interface**: Adicionado um botão "Abrir" para acesso rápido à pasta local de resultados.
+          - **Interface**: Correção do layout que ocultava os botões inferiores ao carregar labirintos de grandes proporções.
+          - **Sistema**: Correção do erro `PIL._tkinter_finder` nas versões de Linux e macOS durante a geração dos gráficos de convergência. busca clássica e busca local em labirintos.
           
           ### Funcionalidades (v1.0)
           - Execução e visualização de algoritmos de busca não informada e heurística (BFS, DFS, UCS, A*, Greedy).

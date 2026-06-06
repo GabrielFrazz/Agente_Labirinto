@@ -235,6 +235,9 @@ class MazeApp:
         )
         self._alg_result_label.pack(fill=tk.X, pady=(0, 6))
 
+        bottom_info_frame = ttk.Frame(info_frame)
+        bottom_info_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
         self._metrics_tree = ttk.Treeview(
             info_frame, columns=('Métrica', 'Valor'), show='headings', height=14,
             style='Metrics.Treeview',
@@ -245,19 +248,24 @@ class MazeApp:
         self._metrics_tree.column('Valor', width=135, anchor=tk.E)
         self._metrics_tree.tag_configure('even', background='#f5f5f0')
         self._metrics_tree.tag_configure('odd', background='#ffffff')
-        self._metrics_tree.pack(fill=tk.BOTH, expand=True)
+        self._metrics_tree.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        ttk.Separator(info_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(8, 4))
+        ttk.Separator(bottom_info_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(8, 4))
 
-        ttk.Label(info_frame, text='Info do Labirinto:', style='Header.TLabel').pack(
+        ttk.Label(bottom_info_frame, text='Info do Labirinto:', style='Header.TLabel').pack(
             anchor=tk.W, pady=(4, 2))
         self._maze_info_var = tk.StringVar(value='Nenhum labirinto carregado.')
-        ttk.Label(info_frame, textvariable=self._maze_info_var, wraplength=320,
+        ttk.Label(bottom_info_frame, textvariable=self._maze_info_var, wraplength=320,
                   justify=tk.LEFT, font=('Segoe UI', 9)).pack(anchor=tk.W)
 
+        results_frame = ttk.Frame(bottom_info_frame)
+        results_frame.pack(anchor=tk.W, fill=tk.X, pady=(6, 0))
+
         self._results_dir_var = tk.StringVar(value=f'📁 {self.results_dir}')
-        ttk.Label(info_frame, textvariable=self._results_dir_var, wraplength=320,
-                  justify=tk.LEFT, font=('Segoe UI', 8), foreground='#777').pack(anchor=tk.W, pady=(6, 0))
+        ttk.Label(results_frame, textvariable=self._results_dir_var, wraplength=260,
+                  justify=tk.LEFT, font=('Segoe UI', 8), foreground='#777').pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        ttk.Button(results_frame, text="Abrir", width=5, command=self._open_results_folder).pack(side=tk.RIGHT)
 
         self._status_var = tk.StringVar(value='Pronto.')
         self._status_bar = ttk.Label(
@@ -274,6 +282,19 @@ class MazeApp:
             self._alg_var.set(self._prev_alg)
         else:
             self._prev_alg = selected
+
+    def _open_results_folder(self) -> None:
+        import subprocess
+        path = self.results_dir
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+            
+        if sys.platform == 'win32':
+            os.startfile(path)
+        elif sys.platform == 'darwin':
+            subprocess.run(['open', path])
+        else:
+            subprocess.run(['xdg-open', path])
 
     def choose_results_dir(self) -> None:
         folder = filedialog.askdirectory(
