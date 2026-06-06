@@ -20,13 +20,13 @@
 
 ## Funcionalidades
 
-| Categoria | Algoritmos / Recursos |
-|---|---|
-| Busca Não-Informada | BFS, DFS, UCS |
-| Busca Heurística | Greedy, A* |
-| Busca Local | Hill-Climbing, Simulated Annealing |
-| Ambiente Dinâmico | Replanning com A* |
-| Análise | Exportação CSV, gráficos de convergência |
+| Categoria | Algoritmos / Recursos                          |
+|---|------------------------------------------------|
+| Busca Não-Informada | BFS, DFS, UCS                                  |
+| Busca Heurística | Gulosa, A*                                     |
+| Busca Local | Hill-Climbing, Simulated Annealing             |
+| Ambiente Dinâmico | Replanning com A*                              |
+| Análise | Exportação CSV, gráficos de convergência       |
 | Interface | Controle de velocidade, métricas em tempo real |
 
 ---

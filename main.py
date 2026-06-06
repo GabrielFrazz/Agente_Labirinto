@@ -114,6 +114,7 @@ def run_batch(maze_path: str) -> None:
         local_rows = [
             {
                 'algoritmo': 'HillClimbing',
+                'melhor_ordem': str(hc_result.get('melhor_ordem', '-')),
                 'melhor_custo': hc_result['melhor_custo'],
                 'pior_custo': hc_result['pior_custo'],
                 'custo_medio': round(hc_result['custo_medio'], 2),
@@ -124,6 +125,7 @@ def run_batch(maze_path: str) -> None:
             },
             {
                 'algoritmo': 'SA',
+                'melhor_ordem': str(sa_result.get('melhor_ordem', '-')),
                 'melhor_custo': sa_result['melhor_custo'],
                 'pior_custo': sa_result['pior_custo'],
                 'custo_medio': round(sa_result['custo_medio'], 2),

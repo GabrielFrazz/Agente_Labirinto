@@ -30,6 +30,9 @@ def solution_cost(order: list[int], dist: dict, nodes: list) -> float:
     goal = nodes[-1]
     total = 0.0
 
+    if not order:
+        return dist[(start, goal)]
+
     first = nodes[order[0] + 1]
     total += dist[(start, first)]
     if total == float("inf"):
@@ -129,7 +132,7 @@ def hill_climbing(maze, dist, nodes, restarts=30) -> dict:
 
 
 def simulated_annealing(
-    maze, dist, nodes, T0=1000.0, alpha=0.998, max_iter=10000, runs=5
+    maze, dist, nodes, T0=1000.0, alpha=0.995, max_iter=10000, runs=5
 ) -> dict:
     t0 = time.perf_counter()
 
@@ -159,6 +162,7 @@ def simulated_annealing(
     last_best_history = []
     last_current_history = []
     last_temperature_history = []
+    total_iterations = 0
 
     for _run in range(runs):
 
@@ -172,11 +176,13 @@ def simulated_annealing(
 
         T = T0
 
-        best_history = []
-        current_history = []
-        temperature_history = []
+        best_history = [run_best_cost]
+        current_history = [current_cost]
+        temperature_history = [T]
 
+        patience_counter = 0
         for _it in range(max_iter):
+            total_iterations += 1
 
             i = random.randint(0, k - 1)
             j = random.randint(0, k - 1)
@@ -204,6 +210,9 @@ def simulated_annealing(
             if current_cost < run_best_cost:
                 run_best_cost = current_cost
                 run_best_order = current_order[:]
+                patience_counter = 0
+            else:
+                patience_counter += 1
 
             current_history.append(current_cost)
             best_history.append(run_best_cost)
@@ -211,18 +220,21 @@ def simulated_annealing(
 
             T *= alpha
 
+            if T < 0.001 or patience_counter > 1000:
+                break
+
         if run_best_cost < global_best_cost:
             global_best_cost = run_best_cost
             global_best_order = run_best_order[:]
+            
+            last_best_history = best_history
+            last_current_history = current_history
+            last_temperature_history = temperature_history
 
         if run_best_cost > worst_cost:
             worst_cost = run_best_cost
 
         cost_sum += run_best_cost
-
-        last_best_history = best_history
-        last_current_history = current_history
-        last_temperature_history = temperature_history
 
     t1 = time.perf_counter()
 
@@ -232,6 +244,7 @@ def simulated_annealing(
         "pior_custo": worst_cost,
         "custo_medio": cost_sum / runs,
         "execucoes": runs,
+        "iteracoes": total_iterations,
         "tempo_ms": (t1 - t0) * 1000.0,
 
         "historico_best": last_best_history,

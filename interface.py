@@ -160,9 +160,9 @@ class MazeApp:
 
         self._btn_load = ttk.Button(toolbar_1, text='📂  Carregar Labirinto', cursor='hand2', command=self.load_maze)
         self._btn_load.pack(side=tk.LEFT, padx=4)
-        self._btn_run = ttk.Button(toolbar_1, text='▶  Executar', cursor='hand2', style='Action.TButton', command=self.run_algorithm)
-        self._btn_run.pack(side=tk.LEFT, padx=4)
-        self._btn_clear = ttk.Button(toolbar_1, text='🗑  Limpar', cursor='hand2', command=self._clear)
+        self._btn_generate = ttk.Button(toolbar_1, text='Gerar Aleatório', cursor='hand2', command=self.generate_random_maze)
+        self._btn_generate.pack(side=tk.LEFT, padx=4)
+        self._btn_clear = ttk.Button(toolbar_1, text='Limpar', cursor='hand2', command=self._clear)
         self._btn_clear.pack(side=tk.LEFT, padx=4)
 
         ttk.Separator(toolbar_1, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
@@ -175,8 +175,11 @@ class MazeApp:
             values=list(ALG_MAP.keys()), state='readonly', width=22,
             font=('Segoe UI', 10),
         )
-        self._alg_combo.pack(side=tk.LEFT, padx=2)
+        self._alg_combo.pack(side=tk.LEFT, padx=4, ipady=2)
         self._alg_combo.bind('<<ComboboxSelected>>', self._on_alg_selected)
+        
+        self._btn_run = ttk.Button(toolbar_1, text='▶  Executar', cursor='hand2', style='Action.TButton', command=self.run_algorithm)
+        self._btn_run.pack(side=tk.LEFT, padx=(6, 10))
 
         ttk.Button(toolbar_1, text='✕  Sair', cursor='hand2', command=self._confirm_exit).pack(side=tk.RIGHT, padx=4)
         ttk.Button(toolbar_1, text='📁  Pasta de Resultados', cursor='hand2', command=self.choose_results_dir).pack(side=tk.RIGHT, padx=4)
@@ -323,22 +326,78 @@ class MazeApp:
         )
         if not filepath:
             return
+        self.maze_path = filepath
+        self._load_maze()
+
+    def generate_random_maze(self) -> None:
+        dialog = tk.Toplevel(self.master)
+        dialog.title("Gerar Labirinto")
+        dialog.geometry("280x240")
+        dialog.resizable(False, False)
+        dialog.transient(self.master)
+        dialog.grab_set()
+
+        ttk.Label(dialog, text="Largura:").pack(pady=(12, 0))
+        width_entry = ttk.Entry(dialog, justify='center', width=15)
+        width_entry.insert(0, "41")
+        width_entry.pack()
+
+        ttk.Label(dialog, text="Altura:").pack(pady=(10, 0))
+        height_entry = ttk.Entry(dialog, justify='center', width=15)
+        height_entry.insert(0, "21")
+        height_entry.pack()
+
+        ttk.Label(dialog, text="Qtd. Coletáveis (C):").pack(pady=(10, 0))
+        col_entry = ttk.Entry(dialog, justify='center', width=15)
+        col_entry.insert(0, "3")
+        col_entry.pack()
+
+        def _generate():
+            w = int(width_entry.get())
+            h = int(height_entry.get())
+            c = int(col_entry.get())
+            dialog.destroy()
+            try:
+                from core.maze_generator import generate_maze_string
+                maze_str = generate_maze_string(w, h, c)
+                
+                mazes_dir = os.path.join(BASE_DIR, 'mazes')
+                os.makedirs(mazes_dir, exist_ok=True)
+                
+                idx = 1
+                while True:
+                    path = os.path.join(mazes_dir, f'maze_aleatorio_{idx}.txt')
+                    if not os.path.exists(path):
+                        break
+                    idx += 1
+                
+                with open(path, 'w', encoding='utf-8') as f:
+                    f.write(maze_str)
+                    
+                self.maze_path = path
+                self._load_maze()
+            except Exception as e:
+                messagebox.showerror("Erro ao Gerar", f"Não foi possível gerar o labirinto:\n{e}")
+
+        ttk.Button(dialog, text="Gerar", style='Action.TButton', command=_generate).pack(pady=20)
+
+    def _load_maze(self) -> None:
         try:
-            self.maze = Maze(filepath)
-        except ValueError as e:
+            self.maze = Maze(self.maze_path)
+        except Exception as e:
             messagebox.showerror('Erro ao carregar labirinto', str(e))
             return
 
         self._last_result = None
         self._results_history.clear()
-        self._status_var.set(f'Labirinto carregado: {os.path.basename(filepath)}')
+        self._status_var.set(f'Labirinto carregado: {os.path.basename(self.maze_path)}')
 
         cell_size = self._compute_cell_size()
         draw_maze_on_canvas(self.canvas, self.maze.grid, cell_size)
 
         n_collect = len(self.maze.collect)
         self._maze_info_var.set(
-            f'Arquivo: {os.path.basename(filepath)}\n'
+            f'Arquivo: {os.path.basename(self.maze_path)}\n'
             f'Dimensões: {self.maze.rows}×{self.maze.cols}\n'
             f'Início (A): {self.maze.start}\n'
             f'Objetivo (B): {self.maze.goal}\n'
@@ -355,11 +414,8 @@ class MazeApp:
             messagebox.showwarning('Aviso', 'Aguarde o processamento atual terminar.')
             return
 
-        alg_key = ALG_MAP.get(self._alg_var.get())
-        if alg_key is None:
-            return
-
-        self._set_ui_busy(f'Executando {self._alg_var.get()}…')
+        alg_key = ALG_MAP[self._alg_var.get()]
+        self._set_ui_busy(self._alg_var.get())
         self._clear_metrics()
 
         if alg_key in CLASSICAL_ALGS:
@@ -370,13 +426,18 @@ class MazeApp:
             self._run_online()
 
     def _run_classical(self, alg_name: str) -> None:
+        import gc
+        gc.disable()
         try:
             result = run_classical(alg_name, self.maze, self.maze.start, self.maze.goal)
             self._last_result = result
             self._last_alg_type = 'classical'
             self.canvas.after(0, self._on_result_ready)
         except Exception as e:
-            self.canvas.after(0, lambda: [messagebox.showerror('Erro', str(e)), self._set_ui_idle()])
+            err_msg = str(e)
+            self.canvas.after(0, lambda msg=err_msg: [messagebox.showerror('Erro', msg), self._set_ui_idle()])
+        finally:
+            gc.enable()
 
     def _run_local_search(self, alg_name: str) -> None:
         if len(self.maze.collect) == 0:
@@ -385,8 +446,40 @@ class MazeApp:
                          'Use um labirinto com coletas para busca local.'), self._set_ui_idle()])
             return
 
+        import gc
+        gc.disable()
         try:
             dist, nodes = precompute_distances(self.maze)
+            
+            if any(v == float('inf') for v in dist.values()):
+                if dist[(nodes[0], nodes[-1])] == float('inf'):
+                    raise ValueError("Não é possível alcançar B a partir de A.\nNão existe solução")
+
+                user_response = [None]
+                import threading
+                event = threading.Event()
+                
+                def _ask():
+                    res = messagebox.askyesno(
+                        "Pontos inalcançáveis",
+                        "Não é possível solucionar para todos os pontos de coleta.\nDeseja continuar somente para os pontos alcançáveis?"
+                    )
+                    user_response[0] = res
+                    event.set()
+                
+                self.canvas.after(0, _ask)
+                event.wait()
+                
+                if not user_response[0]:
+                    self.canvas.after(0, lambda: [self._set_status('Busca cancelada.'), self._set_ui_idle()])
+                    return
+                
+                reachable_nodes = [nodes[0]]
+                for n in nodes[1:-1]:
+                    if dist[(nodes[0], n)] != float('inf'):
+                        reachable_nodes.append(n)
+                reachable_nodes.append(nodes[-1])
+                nodes = reachable_nodes
 
             if alg_name == 'hc':
                 result = hill_climbing(self.maze, dist, nodes)
@@ -403,7 +496,10 @@ class MazeApp:
 
             self.canvas.after(0, lambda: self._show_convergence(result, alg_name))
         except Exception as e:
-            self.canvas.after(0, lambda: [messagebox.showerror('Erro', str(e)), self._set_ui_idle()])
+            err_msg = str(e)
+            self.canvas.after(0, lambda msg=err_msg: [messagebox.showerror('Erro', msg), self._set_ui_idle()])
+        finally:
+            gc.enable()
 
     def _run_online(self) -> None:
         self._online_agent = OnlineAgent(self.maze)
@@ -504,13 +600,27 @@ class MazeApp:
                 ('Fronteira máxima', result['fronteira_max']),
             ]
         elif self._last_alg_type == 'local':
-            metrics = [
+            metrics = []
+            order_str = str(result.get('melhor_ordem', '-'))
+            import textwrap
+            wrapped = textwrap.wrap(order_str, width=28)
+            if not wrapped:
+                wrapped = ['-']
+            metrics.append(('Melhor ordem', wrapped[0]))
+            for line in wrapped[1:]:
+                metrics.append((' ', line))
+                
+            metrics.extend([
                 ('Melhor custo', result['melhor_custo']),
                 ('Pior custo', result['pior_custo']),
                 ('Custo médio', f"{result['custo_medio']:.2f}"),
                 ('Tempo (ms)', f"{result['tempo_ms']:.2f}"),
-                ('Iterações', result.get('iteracoes', result.get('execucoes', '-'))),
-            ]
+                ('Iterações', result.get('iteracoes', '-')),
+            ])
+            if 'execucoes' in result:
+                metrics.append(('Execuções (Runs)', result['execucoes']))
+            elif 'reinicializacoes' in result:
+                metrics.append(('Reinicializações', result['reinicializacoes']))
         elif self._last_alg_type == 'online':
             metrics = [
                 ('Sucesso', '✓' if result['sucesso'] else '✗'),
@@ -534,7 +644,7 @@ class MazeApp:
         _csv_exclude = {
             'caminho', 'caminho_percorrido', 'caminho_offline',
             'historico_custo', 'historico_current', 'historico_best',
-            'historico_temperatura', 'melhor_ordem',
+            'historico_temperatura',
             '_nos', '_conjunto_explorados',
         }
         row.update({k: v for k, v in result.items() if k not in _csv_exclude})
@@ -648,16 +758,6 @@ class MazeApp:
             if not current_history:
                 return
 
-            max_points = 500
-
-            def downsample(data):
-                if len(data) <= max_points:
-                    return data
-                step = len(data) / max_points
-                return [data[int(i * step)] for i in range(max_points)]
-
-            current_history = downsample(current_history)
-            best_history = downsample(best_history)
             iterations = list(range(len(current_history)))
 
             win = tk.Toplevel(self.master)
@@ -667,7 +767,7 @@ class MazeApp:
 
             fig, axes = plt.subplots(2, 1, figsize=(7, 6))
 
-            axes[0].plot(iterations, current_history, linewidth=1.2)
+            axes[0].plot(iterations, current_history, linewidth=0.8, alpha=0.6)
             axes[0].set_title('Custo Atual (Exploração e Restarts)')
             axes[0].set_ylabel('Custo')
             axes[0].grid(True, alpha=0.3)
@@ -693,6 +793,11 @@ class MazeApp:
             canvas_fig.draw()
             canvas_fig.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+            def _on_close_hc():
+                plt.close(fig)
+                win.destroy()
+            win.protocol("WM_DELETE_WINDOW", _on_close_hc)
+
             return
 
         current_history = result.get("historico_current", [])
@@ -701,23 +806,6 @@ class MazeApp:
 
         if not current_history:
             return
-
-        max_points = 500
-
-        def downsample(data):
-            if len(data) <= max_points:
-                return data
-
-            step = len(data) / max_points
-
-            return [
-                data[int(i * step)]
-                for i in range(max_points)
-            ]
-
-        current_history = downsample(current_history)
-        best_history = downsample(best_history)
-        temperature_history = downsample(temperature_history)
 
         iterations = list(range(len(current_history)))
 
@@ -731,7 +819,8 @@ class MazeApp:
         axes[0].plot(
             iterations,
             current_history,
-            linewidth=1.2
+            linewidth=0.8,
+            alpha=0.6
         )
 
         axes[0].set_title("Custo Atual (Exploração)")
@@ -774,6 +863,11 @@ class MazeApp:
         canvas_fig = FigureCanvasTkAgg(fig, master=win)
         canvas_fig.draw()
         canvas_fig.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        def _on_close_sa():
+            plt.close(fig)
+            win.destroy()
+        win.protocol("WM_DELETE_WINDOW", _on_close_sa)
 
 
     def _show_online_comparison(self, result: dict) -> None:
