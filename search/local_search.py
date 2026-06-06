@@ -74,7 +74,8 @@ def hill_climbing(maze, dist, nodes, restarts=30) -> dict:
     worst_cost = float("-inf")
     cost_sum = 0.0
     total_iterations = 0
-    cost_history = []
+    historico_current = []
+    historico_best = []
 
     for _restart in range(restarts):
         current_order = list(range(k))
@@ -88,7 +89,8 @@ def hill_climbing(maze, dist, nodes, restarts=30) -> dict:
                 global_best_cost = current_cost
                 global_best_order = current_order[:]
 
-            cost_history.append(global_best_cost)
+            historico_current.append(current_cost)
+            historico_best.append(global_best_cost)
 
             neighbors = get_neighbors(current_order)
             best_neighbor = None
@@ -121,7 +123,8 @@ def hill_climbing(maze, dist, nodes, restarts=30) -> dict:
         "reinicializacoes": restarts,
         "iteracoes": total_iterations,
         "tempo_ms": (t1 - t0) * 1000.0,
-        "historico_custo": cost_history,
+        "historico_current": historico_current,
+        "historico_best": historico_best,
     }
 
 

@@ -1,17 +1,13 @@
-"""
-Uso:
-    python main.py                        # abre a GUI
-    python main.py --batch maze_simple.txt  # roda todos algoritmos e salva CSV
-    python main.py --help
-"""
-
 import argparse
 import io
 import os
 import sys
 
-if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if sys.stdout is not None and getattr(sys.stdout, 'encoding', None) and sys.stdout.encoding.lower() != 'utf-8':
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
