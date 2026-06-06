@@ -2,4 +2,11 @@
 /.antigravitycli
 Instructions.MD
 __pycache__/
-/venv
+/.venv/
+/venv/
+/dist/
+/build/
+/results/
+*.spec
+*.zip
+*.exe

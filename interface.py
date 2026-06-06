@@ -7,12 +7,20 @@ from tkinter import filedialog, ttk, messagebox
 
 import matplotlib
 matplotlib.use('TkAgg')
+import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from ttkthemes import ThemedTk
 
 from core.maze import Maze
 from core.metrics import save_csv, plot_convergence, plot_comparison_bar
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+    ASSETS_DIR = getattr(sys, '_MEIPASS', BASE_DIR)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    ASSETS_DIR = BASE_DIR
 from search.classical import run_algorithm as run_classical
 from search.local_search import (
     precompute_distances, hill_climbing, simulated_annealing,
@@ -30,7 +38,7 @@ CELL_COLORS = {
     '?':  '#888780',
     '*':  '#D14520',
     'PATH':     '#EF9F27',
-    'EXPLORED': '#3E77B6',
+    'EXPLORED': '#a1c1d6',
 }
 
 ALG_MAP = {
@@ -89,7 +97,7 @@ def draw_maze_on_canvas(
             if ch in ('A', 'B', 'C', '*'):
                 color = CELL_COLORS[ch]
 
-            canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline='#d0d0d0', width=1)
+            canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline='#c0c0c0', width=1)
 
             if ch in ('A', 'B', 'C', '*'):
                 text_to_draw = ch
@@ -119,67 +127,92 @@ class MazeApp:
         self.master.geometry('1280x720')
         self.master.minsize(1024, 600)
 
+        self._icon_path = os.path.join(ASSETS_DIR, 'maze.ico')
+        if os.path.exists(self._icon_path):
+            try:
+                self.master.iconbitmap(self._icon_path)
+            except Exception:
+                pass
 
         self.maze = None
         self._last_result = None
         self._last_alg_type = None
         self._online_agent = None
         self._animating = False
+        self._processing = False
         self._results_history = []
+        self.maze_path: str = ''
+        self.results_dir = os.path.join(os.path.expanduser('~'), 'MazeSolver_Results')
+        self._prev_alg: str = 'A*'
 
         style = ttk.Style()
         style.configure('TButton', font=('Segoe UI', 10), padding=4)
         style.configure('Header.TLabel', font=('Segoe UI', 12, 'bold'))
         style.configure('Status.TLabel', font=('Segoe UI', 9))
+        style.configure('Action.TButton', font=('Segoe UI', 10, 'bold'), padding=6)
 
-        ctrl_frame = ttk.Frame(master, padding=6)
-        ctrl_frame.pack(side=tk.TOP, fill=tk.X)
+        style.configure('Metrics.Treeview', font=('Segoe UI', 10), rowheight=26)
+        style.configure('Metrics.Treeview.Heading', font=('Segoe UI', 10, 'bold'))
+        style.map('Metrics.Treeview', background=[('selected', '#3B8BD4')])
 
-        ttk.Button(ctrl_frame, text='Carregar Labirinto', command=self.load_maze).pack(side=tk.LEFT, padx=4)
-        ttk.Button(ctrl_frame, text='Executar', command=self.run_algorithm).pack(side=tk.LEFT, padx=4)
-        ttk.Button(ctrl_frame, text='Limpar', command=self._clear).pack(side=tk.LEFT, padx=4)
-        ttk.Button(ctrl_frame, text='Sair', command=self.master.destroy).pack(side=tk.LEFT, padx=4)
+        toolbar_1 = ttk.Frame(master, padding=(6, 6, 6, 2))
+        toolbar_1.pack(side=tk.TOP, fill=tk.X)
 
+        self._btn_load = ttk.Button(toolbar_1, text='📂  Carregar Labirinto', cursor='hand2', command=self.load_maze)
+        self._btn_load.pack(side=tk.LEFT, padx=4)
+        self._btn_run = ttk.Button(toolbar_1, text='▶  Executar', cursor='hand2', style='Action.TButton', command=self.run_algorithm)
+        self._btn_run.pack(side=tk.LEFT, padx=4)
+        self._btn_clear = ttk.Button(toolbar_1, text='🗑  Limpar', cursor='hand2', command=self._clear)
+        self._btn_clear.pack(side=tk.LEFT, padx=4)
 
-        ttk.Separator(ctrl_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=8)
+        ttk.Separator(toolbar_1, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
 
-        ttk.Label(ctrl_frame, text='Algoritmo:').pack(side=tk.LEFT, padx=(4, 2))
+        ttk.Label(toolbar_1, text='Algoritmo:', font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(4, 2))
         self._alg_var = tk.StringVar(value='BFS')
         self._prev_alg = 'BFS'
-        alg_combo = ttk.Combobox(
-            ctrl_frame, textvariable=self._alg_var,
-            values=list(ALG_MAP.keys()), state='readonly', width=20,
+        self._alg_combo = ttk.Combobox(
+            toolbar_1, textvariable=self._alg_var,
+            values=list(ALG_MAP.keys()), state='readonly', width=22,
+            font=('Segoe UI', 10),
         )
-        alg_combo.pack(side=tk.LEFT, padx=2)
-        alg_combo.bind('<<ComboboxSelected>>', self._on_alg_selected)
+        self._alg_combo.pack(side=tk.LEFT, padx=2)
+        self._alg_combo.bind('<<ComboboxSelected>>', self._on_alg_selected)
 
-        ttk.Separator(ctrl_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=8)
+        ttk.Button(toolbar_1, text='✕  Sair', cursor='hand2', command=self._confirm_exit).pack(side=tk.RIGHT, padx=4)
+        ttk.Button(toolbar_1, text='📁  Pasta de Resultados', cursor='hand2', command=self.choose_results_dir).pack(side=tk.RIGHT, padx=4)
 
-        ttk.Label(ctrl_frame, text='Vel. Animação (ms):').pack(side=tk.LEFT, padx=(4, 2))
+        toolbar_2 = ttk.Frame(master, padding=(6, 2, 6, 4))
+        toolbar_2.pack(side=tk.TOP, fill=tk.X)
+
+        ttk.Label(toolbar_2, text='Vel. Animação:', font=('Segoe UI', 9)).pack(side=tk.LEFT, padx=(4, 2))
         self._speed_var = tk.IntVar(value=10)
         speed_scale = ttk.Scale(
-            ctrl_frame, from_=1, to=20, variable=self._speed_var,
-            orient=tk.HORIZONTAL, length=120,
+            toolbar_2, from_=1, to=20, variable=self._speed_var,
+            orient=tk.HORIZONTAL, length=130,
         )
         speed_scale.pack(side=tk.LEFT, padx=2)
-        self._speed_label = ttk.Label(ctrl_frame, text='10', width=4)
+        self._speed_label = ttk.Label(toolbar_2, text='10 ms', width=6, font=('Segoe UI', 9))
         self._speed_label.pack(side=tk.LEFT)
-        speed_scale.config(command=lambda v: self._speed_label.config(text=str(int(float(v)))))
+        speed_scale.config(command=lambda v: self._speed_label.config(text=f'{int(float(v))} ms'))
+
+        ttk.Separator(toolbar_2, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
 
         self._show_explored_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(
-            ctrl_frame, text='Mostrar nós explorados',
+            toolbar_2, text='Mostrar nós explorados',
             variable=self._show_explored_var,
             command=self._redraw_result,
         ).pack(side=tk.LEFT, padx=8)
 
-        main_frame = ttk.Frame(master)
-        main_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=6, pady=(0, 4))
+        ttk.Separator(master, orient=tk.HORIZONTAL).pack(side=tk.TOP, fill=tk.X)
 
-        canvas_frame = ttk.LabelFrame(main_frame, text='Labirinto', padding=4)
+        main_frame = ttk.Frame(master)
+        main_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=6, pady=(4, 4))
+
+        canvas_frame = ttk.LabelFrame(main_frame, text='  Labirinto  ', padding=4)
         canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.canvas = tk.Canvas(canvas_frame, bg='#e8e8e4', cursor='crosshair')
+        self.canvas = tk.Canvas(canvas_frame, bg='#f0efe8', cursor='crosshair')
 
         h_scroll = ttk.Scrollbar(canvas_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
         v_scroll = ttk.Scrollbar(canvas_frame, orient=tk.VERTICAL, command=self.canvas.yview)
@@ -189,31 +222,60 @@ class MazeApp:
         h_scroll.pack(side=tk.BOTTOM, fill=tk.X)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        info_frame = ttk.LabelFrame(main_frame, text='Métricas', padding=4, width=340)
+        self.canvas.bind('<Configure>', self._on_canvas_resize)
+        self.canvas.after(50, self._draw_placeholder)
+
+        info_frame = ttk.LabelFrame(main_frame, text='  Métricas  ', padding=6, width=340)
         info_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(4, 0))
         info_frame.pack_propagate(False)
 
+        self._alg_result_var = tk.StringVar(value='')
+        self._alg_result_label = tk.Label(
+            info_frame, textvariable=self._alg_result_var,
+            font=('Segoe UI', 12, 'bold'), fg='#2c3e50',
+            anchor=tk.CENTER, pady=2,
+        )
+        self._alg_result_label.pack(fill=tk.X, pady=(0, 6))
+
+        bottom_info_frame = ttk.Frame(info_frame)
+        bottom_info_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
         self._metrics_tree = ttk.Treeview(
             info_frame, columns=('Métrica', 'Valor'), show='headings', height=14,
+            style='Metrics.Treeview',
         )
         self._metrics_tree.heading('Métrica', text='Métrica')
         self._metrics_tree.heading('Valor', text='Valor')
-        self._metrics_tree.column('Métrica', width=150, anchor=tk.W)
-        self._metrics_tree.column('Valor', width=140, anchor=tk.E)
-        self._metrics_tree.pack(fill=tk.BOTH, expand=True)
+        self._metrics_tree.column('Métrica', width=155, anchor=tk.W)
+        self._metrics_tree.column('Valor', width=135, anchor=tk.E)
+        self._metrics_tree.tag_configure('even', background='#f5f5f0')
+        self._metrics_tree.tag_configure('odd', background='#ffffff')
+        self._metrics_tree.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        ttk.Label(info_frame, text='Info do Labirinto:', style='Header.TLabel').pack(
-            anchor=tk.W, pady=(8, 2))
+        ttk.Separator(bottom_info_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(8, 4))
+
+        ttk.Label(bottom_info_frame, text='Info do Labirinto:', style='Header.TLabel').pack(
+            anchor=tk.W, pady=(4, 2))
         self._maze_info_var = tk.StringVar(value='Nenhum labirinto carregado.')
-        ttk.Label(info_frame, textvariable=self._maze_info_var, wraplength=320,
-                  justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(bottom_info_frame, textvariable=self._maze_info_var, wraplength=320,
+                  justify=tk.LEFT, font=('Segoe UI', 9)).pack(anchor=tk.W)
+
+        results_frame = ttk.Frame(bottom_info_frame)
+        results_frame.pack(anchor=tk.W, fill=tk.X, pady=(6, 0))
+
+        self._results_dir_var = tk.StringVar(value=f'📁 {self.results_dir}')
+        ttk.Label(results_frame, textvariable=self._results_dir_var, wraplength=260,
+                  justify=tk.LEFT, font=('Segoe UI', 8), foreground='#777').pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        ttk.Button(results_frame, text="Abrir", width=5, command=self._open_results_folder).pack(side=tk.RIGHT)
 
         self._status_var = tk.StringVar(value='Pronto.')
-        status_bar = ttk.Label(
-            master, textvariable=self._status_var, style='Status.TLabel',
-            relief=tk.SUNKEN, anchor=tk.W, padding=(6, 2),
+        self._status_bar = ttk.Label(
+            master, textvariable=self._status_var,
+            font=('Segoe UI', 9), anchor=tk.W, padding=(8, 3),
+            relief=tk.SUNKEN,
         )
-        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        self._status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
 
     def _on_alg_selected(self, _event=None) -> None:
@@ -223,11 +285,41 @@ class MazeApp:
         else:
             self._prev_alg = selected
 
+    def _open_results_folder(self) -> None:
+        import subprocess
+        path = self.results_dir
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+            
+        if sys.platform == 'win32':
+            os.startfile(path)
+        else:
+            env = os.environ.copy()
+            env.pop("LD_LIBRARY_PATH", None)
+            
+            if sys.platform == 'darwin':
+                subprocess.run(['open', path], env=env)
+            else:
+                subprocess.run(['xdg-open', path], env=env)
+
+    def choose_results_dir(self) -> None:
+        folder = filedialog.askdirectory(
+            title='Selecione a pasta para salvar os relatórios',
+            initialdir=self.results_dir
+        )
+        if folder:
+            self.results_dir = folder
+            self._results_dir_var.set(f'📁 {self.results_dir}')
+            messagebox.showinfo('Pasta atualizada', f'Os relatórios agora serão salvos em:\n{self.results_dir}')
+
     def load_maze(self) -> None:
+        if self._processing:
+            messagebox.showwarning('Aviso', 'Aguarde o processamento atual terminar.')
+            return
         filepath = filedialog.askopenfilename(
             title='Selecione um labirinto',
             filetypes=[('Arquivo de texto', '*.txt'), ('Todos', '*.*')],
-            initialdir=os.path.join(os.path.dirname(__file__), 'mazes'),
+            initialdir=os.path.join(ASSETS_DIR, 'mazes'),
         )
         if not filepath:
             return
@@ -259,15 +351,15 @@ class MazeApp:
         if self.maze is None:
             messagebox.showwarning('Aviso', 'Carregue um labirinto primeiro.')
             return
-        if self._animating:
-            messagebox.showwarning('Aviso', 'Uma animação já está em andamento.')
+        if self._processing or self._animating:
+            messagebox.showwarning('Aviso', 'Aguarde o processamento atual terminar.')
             return
 
         alg_key = ALG_MAP.get(self._alg_var.get())
         if alg_key is None:
             return
 
-        self._status_var.set(f'Executando {self._alg_var.get()}…')
+        self._set_ui_busy(f'Executando {self._alg_var.get()}…')
         self._clear_metrics()
 
         if alg_key in CLASSICAL_ALGS:
@@ -284,13 +376,13 @@ class MazeApp:
             self._last_alg_type = 'classical'
             self.canvas.after(0, self._on_result_ready)
         except Exception as e:
-            self.canvas.after(0, lambda: messagebox.showerror('Erro', str(e)))
+            self.canvas.after(0, lambda: [messagebox.showerror('Erro', str(e)), self._set_ui_idle()])
 
     def _run_local_search(self, alg_name: str) -> None:
         if len(self.maze.collect) == 0:
-            self.canvas.after(0, lambda: messagebox.showwarning(
+            self.canvas.after(0, lambda: [messagebox.showwarning(
                 'Aviso', 'Este labirinto não possui pontos de coleta (C).\n'
-                         'Use um labirinto com coletas para busca local.'))
+                         'Use um labirinto com coletas para busca local.'), self._set_ui_idle()])
             return
 
         try:
@@ -311,7 +403,7 @@ class MazeApp:
 
             self.canvas.after(0, lambda: self._show_convergence(result, alg_name))
         except Exception as e:
-            self.canvas.after(0, lambda: messagebox.showerror('Erro', str(e)))
+            self.canvas.after(0, lambda: [messagebox.showerror('Erro', str(e)), self._set_ui_idle()])
 
     def _run_online(self) -> None:
         self._online_agent = OnlineAgent(self.maze)
@@ -327,9 +419,6 @@ class MazeApp:
         agent = self._online_agent
         delay = self._speed_var.get()
 
-        # O problema da lentidão é que draw_maze_on_canvas desenha milhares de retângulos
-        # a cada passo. Para acelerar, vamos agrupar passos antes de redesenhar a tela
-        # dependendo de quão rápido o usuário quer (menor delay = mais passos por frame).
         if delay <= 2:
             steps_per_frame = 15
         elif delay <= 5:
@@ -437,31 +526,39 @@ class MazeApp:
         else:
             metrics = []
 
-        for metric, value in metrics:
-            tree.insert('', tk.END, values=(metric, value))
+        for i, (metric, value) in enumerate(metrics):
+            tag = 'even' if i % 2 == 0 else 'odd'
+            tree.insert('', tk.END, values=(metric, value), tags=(tag,))
 
         row = {'algoritmo': self._alg_var.get()}
-        row.update({k: v for k, v in result.items()
-                    if k not in ('caminho', 'caminho_percorrido', 'caminho_offline', 'historico_custo', '_nos', '_conjunto_explorados')})
+        _csv_exclude = {
+            'caminho', 'caminho_percorrido', 'caminho_offline',
+            'historico_custo', 'historico_current', 'historico_best',
+            'historico_temperatura', 'melhor_ordem',
+            '_nos', '_conjunto_explorados',
+        }
+        row.update({k: v for k, v in result.items() if k not in _csv_exclude})
         self._results_history.append(row)
 
         maze_basename = os.path.basename(self.maze.filepath)
         maze_name = os.path.splitext(maze_basename)[0]
         csv_filename = f"metrics_{maze_name}_{self._last_alg_type}.csv"
-        csv_path = os.path.join(os.path.dirname(__file__), 'results', maze_name, csv_filename)
+        csv_path = os.path.join(self.results_dir, maze_name, csv_filename)
         try:
             os.makedirs(os.path.dirname(csv_path), exist_ok=True)
             save_csv([row], csv_path, append=True)
         except Exception as e:
             print(f"Erro ao salvar CSV automático: {e}")
 
-        # Gerar gráficos de comparação para buscas clássicas
         if self._last_alg_type == 'classical':
             self._generate_classical_comparison_plots(csv_path, maze_name)
 
         success = result.get('sucesso', True)
-        self._status_var.set(
-            f"{self._alg_var.get()}: {'Concluído ✓' if success else 'Falhou ✗'}")
+        self._alg_result_var.set(f'Resultado: {self._alg_var.get()}')
+        if success:
+            self._set_status(f'{self._alg_var.get()}: Concluído ✓')
+        else:
+            self._set_status(f'{self._alg_var.get()}: Falhou ✗')
 
         path = result.get('caminho', [])
         if self._last_alg_type in ('classical', 'local') and path:
@@ -470,8 +567,10 @@ class MazeApp:
         elif self._last_alg_type == 'online':
             self._redraw_result()
             self._show_online_comparison(result)
+            self._set_ui_idle()
         else:
             self._redraw_result()
+            self._set_ui_idle()
 
     def _animate_path(self, path: list[tuple[int, int]], index: int) -> None:
         if not self._animating:
@@ -492,7 +591,6 @@ class MazeApp:
         if index > 0 and index <= len(path):
             r, c = path[index - 1]
             ch = self.maze.grid[r][c]
-            # Só pinta se não for célula especial
             if ch not in ('A', 'B', 'C', '#'):
                 x1 = c * cell_size
                 y1 = r * cell_size
@@ -500,7 +598,7 @@ class MazeApp:
                 y2 = y1 + cell_size
                 self.canvas.create_rectangle(
                     x1, y1, x2, y2,
-                    fill=CELL_COLORS['PATH'], outline='#d0d0d0', width=1
+                    fill=CELL_COLORS['PATH'], outline='#c0c0c0', width=1
                 )
 
         if index < len(path):
@@ -508,6 +606,7 @@ class MazeApp:
             self.canvas.after(delay, lambda: self._animate_path(path, index + 1))
         else:
             self._animating = False
+            self._set_ui_idle()
 
     def _redraw_result(self) -> None:
         if self.maze is None:
@@ -543,41 +642,51 @@ class MazeApp:
     def _show_convergence(self, result: dict, alg_name: str) -> None:
 
         if alg_name != 'sa':
-            history = result.get('historico_custo', [])
+            current_history = result.get('historico_current', [])
+            best_history = result.get('historico_best', [])
 
-            if not history:
+            if not current_history:
                 return
 
-            iterations = list(range(1, len(history) + 1))
+            max_points = 500
 
-            max_points = 300
-            if len(history) > max_points:
-                step = len(history) / max_points
-                iterations = [int(i * step) + 1 for i in range(max_points)]
-                history = [history[int(i * step)] for i in range(max_points)]
+            def downsample(data):
+                if len(data) <= max_points:
+                    return data
+                step = len(data) / max_points
+                return [data[int(i * step)] for i in range(max_points)]
+
+            current_history = downsample(current_history)
+            best_history = downsample(best_history)
+            iterations = list(range(len(current_history)))
 
             win = tk.Toplevel(self.master)
             win.title('Convergência — Hill-Climbing')
-            win.geometry('700x500')
+            win.geometry('800x600')
+            self._apply_icon(win)
 
-            fig, ax = plt.subplots(figsize=(7, 5))
+            fig, axes = plt.subplots(2, 1, figsize=(7, 6))
 
-            ax.plot(iterations, history, linewidth=2)
+            axes[0].plot(iterations, current_history, linewidth=1.2)
+            axes[0].set_title('Custo Atual (Exploração e Restarts)')
+            axes[0].set_ylabel('Custo')
+            axes[0].grid(True, alpha=0.3)
 
-            ax.set_title('Convergência — Hill-Climbing')
-            ax.set_xlabel('Iteração')
-            ax.set_ylabel('Melhor custo')
-            ax.grid(True, alpha=0.3)
+            axes[1].plot(iterations, best_history, linewidth=2)
+            axes[1].set_title('Melhor Custo Global Encontrado')
+            axes[1].set_xlabel('Iteração')
+            axes[1].set_ylabel('Custo')
+            axes[1].grid(True, alpha=0.3)
 
             fig.tight_layout()
 
             maze_basename = os.path.basename(self.maze.filepath)
             maze_name = os.path.splitext(maze_basename)[0]
-            plot_path = os.path.join(os.path.dirname(__file__), 'results', maze_name, 'plots', f"conv_{maze_name}_{alg_name}.png")
+            plot_path = os.path.join(self.results_dir, maze_name, 'plots', f"conv_{maze_name}_{alg_name}.png")
             try:
                 os.makedirs(os.path.dirname(plot_path), exist_ok=True)
                 fig.savefig(plot_path)
-            except Exception as e:
+            except Exception:
                 pass
 
             canvas_fig = FigureCanvasTkAgg(fig, master=win)
@@ -615,6 +724,7 @@ class MazeApp:
         win = tk.Toplevel(self.master)
         win.title("Simulated Annealing — Diagnóstico")
         win.geometry("900x900")
+        self._apply_icon(win)
 
         fig, axes = plt.subplots(3, 1, figsize=(8, 9))
 
@@ -651,10 +761,9 @@ class MazeApp:
 
         fig.tight_layout()
 
-        # Restaurando o salvamento automático do gráfico
         maze_basename = os.path.basename(self.maze.filepath)
         maze_name = os.path.splitext(maze_basename)[0]
-        plot_path = os.path.join(os.path.dirname(__file__), 'results', maze_name, 'plots', f"conv_{maze_name}_{alg_name}.png")
+        plot_path = os.path.join(self.results_dir, maze_name, 'plots', f"conv_{maze_name}_{alg_name}.png")
         try:
             os.makedirs(os.path.dirname(plot_path), exist_ok=True)
             fig.savefig(plot_path)
@@ -677,8 +786,8 @@ class MazeApp:
         win = tk.Toplevel(self.master)
         win.title('Comparação — Online vs Offline')
         win.geometry('1100x560')
+        self._apply_icon(win)
 
-        # --- Lado esquerdo: caminho online ---
         left_frame = ttk.LabelFrame(win, text='Caminho Online (Replanning com A*)', padding=4)
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(6, 3), pady=6)
 
@@ -694,7 +803,6 @@ class MazeApp:
         left_h.pack(side=tk.BOTTOM, fill=tk.X)
         left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # --- Lado direito: caminho offline ótimo ---
         right_frame = ttk.LabelFrame(win, text='Caminho Ótimo Offline (A*)', padding=4)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(3, 6), pady=6)
 
@@ -712,7 +820,6 @@ class MazeApp:
         right_h.pack(side=tk.BOTTOM, fill=tk.X)
         right_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Calcular cell_size com base no tamanho da janela
         cell_size = max(min(500 // max(self.maze.cols, 1),
                             480 // max(self.maze.rows, 1), 40), 8)
 
@@ -720,9 +827,6 @@ class MazeApp:
         draw_maze_on_canvas(right_canvas, self.maze.grid, cell_size, path=offline_path)
 
     def _generate_classical_comparison_plots(self, csv_path: str, maze_name: str) -> None:
-        """Lê o CSV acumulado de métricas clássicas deste labirinto e gera
-        gráficos de barras comparando nós expandidos e tempo de execução.
-        Usa apenas a última execução de cada algoritmo."""
         import csv as csv_mod
 
         try:
@@ -735,7 +839,6 @@ class MazeApp:
         if not rows:
             return
 
-        # Manter apenas a última execução de cada algoritmo
         latest: dict[str, dict] = {}
         for r in rows:
             latest[r['algoritmo']] = r
@@ -756,7 +859,7 @@ class MazeApp:
             except (KeyError, ValueError):
                 pass
 
-        plots_dir = os.path.join(os.path.dirname(__file__), 'results', maze_name, 'plots')
+        plots_dir = os.path.join(self.results_dir, maze_name, 'plots')
         os.makedirs(plots_dir, exist_ok=True)
 
         if expanded_data:
@@ -788,21 +891,70 @@ class MazeApp:
 
     def _clear(self) -> None:
         self._animating = False
+        self._processing = False
         self._last_result = None
         self._last_alg_type = None
         self._online_agent = None
-        self._animating = False
         self._clear_metrics()
+        self._alg_result_var.set('')
         if self.maze:
             cell_size = self._compute_cell_size()
             draw_maze_on_canvas(self.canvas, self.maze.grid, cell_size)
         else:
             self.canvas.delete('all')
-        self._status_var.set('Pronto.')
+            self._draw_placeholder()
+        self._set_status('Pronto.')
+        self._set_ui_idle()
+
+    def _draw_placeholder(self) -> None:
+        self.canvas.delete('placeholder')
+        if self.maze is None:
+            cw = self.canvas.winfo_width()
+            ch = self.canvas.winfo_height()
+            cx = cw / 2 if cw > 10 else 400
+            cy = ch / 2 if ch > 10 else 250
+            self.canvas.create_text(
+                cx, cy,
+                text='Carregue um labirinto para começar',
+                font=('Segoe UI', 14), fill='#999990', tags='placeholder',
+            )
+
+    def _on_canvas_resize(self, event) -> None:
+        if self.maze is None:
+            self.canvas.coords('placeholder', event.width / 2, event.height / 2)
 
     def _clear_metrics(self) -> None:
         for item in self._metrics_tree.get_children():
             self._metrics_tree.delete(item)
+
+    def _confirm_exit(self) -> None:
+        if messagebox.askokcancel('Sair', 'Tem certeza que deseja sair?'):
+            self.master.destroy()
+
+    def _set_ui_busy(self, msg: str) -> None:
+        self._processing = True
+        self._btn_load.config(state='disabled')
+        self._btn_run.config(state='disabled')
+        self._btn_clear.config(state='disabled')
+        self._alg_combo.config(state='disabled')
+        self._set_status(f'Executando {msg}…')
+
+    def _set_ui_idle(self) -> None:
+        self._processing = False
+        self._btn_load.config(state='normal')
+        self._btn_run.config(state='normal')
+        self._btn_clear.config(state='normal')
+        self._alg_combo.config(state='readonly')
+
+    def _set_status(self, msg: str) -> None:
+        self._status_var.set(msg)
+
+    def _apply_icon(self, win: tk.Toplevel) -> None:
+        if hasattr(self, '_icon_path') and os.path.exists(self._icon_path):
+            try:
+                win.iconbitmap(self._icon_path)
+            except Exception:
+                pass
 
 
 if __name__ == '__main__':

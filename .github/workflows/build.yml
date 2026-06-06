@@ -1,0 +1,97 @@
+name: Build and Auto-Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Dispara automaticamente quando criar uma tag ex: v1.0
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install system dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-tk
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build with PyInstaller (Windows)
+      if: runner.os == 'Windows'
+      run: pyinstaller --noconsole --windowed --icon=maze.ico --add-data "mazes;mazes" --add-data "maze.ico;." --hidden-import PIL._tkinter_finder --name MazeSolver main.py
+
+    - name: Build with PyInstaller (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: pyinstaller --noconsole --windowed --icon=maze.ico --add-data "mazes:mazes" --add-data "maze.ico:." --hidden-import PIL._tkinter_finder --name MazeSolver main.py
+
+    - name: Package Windows Portable & Compile Installer
+      if: runner.os == 'Windows'
+      run: |
+        Compress-Archive -Path dist\MazeSolver -DestinationPath MazeSolver_Windows_Portable.zip -Force
+        iscc MazeSolver_Installer.iss
+
+    - name: Package Linux Portable
+      if: runner.os == 'Linux'
+      run: |
+        cd dist
+        tar -czvf ../MazeSolver_Linux_Portable.tar.gz MazeSolver
+
+    - name: Package macOS Portable
+      if: runner.os == 'macOS'
+      run: |
+        cd dist
+        zip -r ../MazeSolver_macOS_Portable.zip MazeSolver.app
+
+    - name: Publish to GitHub Releases
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          MazeSolver_Windows_Portable.zip
+          dist/MazeSolver_Setup.exe
+          MazeSolver_Linux_Portable.tar.gz
+          MazeSolver_macOS_Portable.zip
+        fail_on_unmatched_files: false
+        name: "Maze Solver - Versão ${{ github.ref_name }}"
+        body: |
+          ## Agente de Resolução de Labirintos
+          ### Notas de Execução
+          Nenhuma das versões disponibilizadas requer a instalação prévia do interpretador Python ou de dependências no sistema operacional hospedeiro.
+          
+          ### Notas da Atualização (v1.0.3)
+          - **Sistema**: Correção do erro de biblioteca no Linux (`symbol lookup error`). 
+          
+          ### Funcionalidades (v1.0)
+          - Execução e visualização de algoritmos de busca não informada e heurística (BFS, DFS, UCS, A*, Greedy).
+          - Otimização de rotas com múltiplos pontos de coleta utilizando Busca Local (Hill-Climbing e Simulated Annealing).
+          - Análise em tempo real do ambiente através de um Agente Online A*.
+          - Geração automática de métricas, exportação de resultados (CSV) e gráficos de convergência.
+          - Interface gráfica minimalista com controle de velocidade e monitoramento detalhado de execução.
+          
+          ### Downloads Disponíveis
+          - **Windows**: 
+            - `MazeSolver_Setup.exe` (Recomendado: instalador executável com atalhos e desinstalador)
+            - `MazeSolver_Windows_Portable.zip` (Versão standalone, não requer instalação)
+          - **Linux**: `MazeSolver_Linux_Portable.tar.gz` (Versão standalone)
+          - **macOS**: `MazeSolver_macOS_Portable.zip` (Application Bundle `.app` standalone)
+          
