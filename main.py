@@ -51,10 +51,11 @@ def run_batch(maze_path: str) -> None:
             'sucesso': result['sucesso'],
             'custo': result['custo'],
             'passos': result['passos'],
-            'explorados': result['explorados'],
             'expandidos': result['expandidos'],
             'tempo_ms': round(result['tempo_ms'], 3),
             'fronteira_max': result['fronteira_max'],
+            'desempenho': result['desempenho'],
+            'formula_desempenho': result['formula_desempenho'],
         }
         classical_results.append(row)
         status = '✓' if result['sucesso'] else '✗'
@@ -122,6 +123,8 @@ def run_batch(maze_path: str) -> None:
                 'iteracoes': hc_result['iteracoes'],
                 'T0': '-',
                 'alfa': '-',
+                'desempenho': hc_result['desempenho'],
+                'formula_desempenho': hc_result['formula_desempenho'],
             },
             {
                 'algoritmo': 'SA',
@@ -133,6 +136,8 @@ def run_batch(maze_path: str) -> None:
                 'iteracoes': sa_result.get('max_iter', '-'),
                 'T0': sa_result['T0'],
                 'alfa': sa_result['alfa'],
+                'desempenho': sa_result['desempenho'],
+                'formula_desempenho': sa_result['formula_desempenho'],
             },
         ]
         save_csv(local_rows, f'results/{maze_name}/local_search_results_{maze_name}.csv')
@@ -188,6 +193,8 @@ def run_batch(maze_path: str) -> None:
         'replanejamentos': online_result['replanejamentos'],
         'otimo_offline': online_result['otimo_offline'],
         'razao_online': round(online_result['razao_online'], 3) if online_result['razao_online'] else '-',
+        'desempenho': online_result['desempenho'],
+        'formula_desempenho': online_result['formula_desempenho'],
         'tempo_ms': round(online_result['tempo_ms'], 3),
     }]
     save_csv(online_rows, f'results/{maze_name}/online_results_{maze_name}.csv')

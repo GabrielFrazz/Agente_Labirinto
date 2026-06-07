@@ -118,6 +118,7 @@ def hill_climbing(maze, dist, nodes, restarts=30) -> dict:
 
     t1 = time.perf_counter()
 
+    desempenho = -0.7 * global_best_cost - 0.3 * ((t1 - t0) * 1000.0)
     return {
         "melhor_ordem": global_best_order,
         "melhor_custo": global_best_cost,
@@ -128,6 +129,8 @@ def hill_climbing(maze, dist, nodes, restarts=30) -> dict:
         "tempo_ms": (t1 - t0) * 1000.0,
         "historico_current": historico_current,
         "historico_best": historico_best,
+        "desempenho": desempenho,
+        "formula_desempenho": "J = -0.7*MelhorCusto - 0.3*Tempo",
     }
 
 
@@ -238,6 +241,7 @@ def simulated_annealing(
 
     t1 = time.perf_counter()
 
+    desempenho = -0.7 * global_best_cost - 0.3 * ((t1 - t0) * 1000.0)
     return {
         "melhor_ordem": global_best_order,
         "melhor_custo": global_best_cost,
@@ -254,6 +258,8 @@ def simulated_annealing(
         "T0": T0,
         "alfa": alpha,
         "max_iter": max_iter,
+        "desempenho": desempenho,
+        "formula_desempenho": "J = -0.7*MelhorCusto - 0.3*Tempo",
     }
 
 

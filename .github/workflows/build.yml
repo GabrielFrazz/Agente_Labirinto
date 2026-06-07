@@ -78,8 +78,8 @@ jobs:
           ### Notas de Execução
           Nenhuma das versões disponibilizadas requer a instalação prévia do interpretador Python ou de dependências no sistema operacional hospedeiro.
           
-          ### Notas da Atualização (v1.0.4)
-          - **Sistema**: Ajustes de interface e correção de bugs. 
+          ### Notas da Atualização (v1.0.5)
+          - **Feature**: Cálculo de desempenho com função de custo.
           
           ### Funcionalidades (v1.0)
           - Execução e visualização de algoritmos de busca não informada e heurística (BFS, DFS, UCS, A*, Greedy).

@@ -6,7 +6,6 @@ import time
 def manhattan(a, b) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-
 def _fail_result(visited: set, expanded: int, elapsed_ms: float,
                  max_frontier: int) -> dict:
     return {
@@ -14,27 +13,30 @@ def _fail_result(visited: set, expanded: int, elapsed_ms: float,
         'caminho':         [],
         'custo':         0,
         'passos':        0,
-        'explorados':     len(visited),
         'expandidos':     expanded,
         'tempo_ms':      elapsed_ms,
         'fronteira_max': max_frontier,
         '_conjunto_explorados': visited,
+        'desempenho': 0,
+        'formula_desempenho': 'J = - 0.7*Custo - 0.05*Expandidos - 0.20*Tempo - 0.05*Fronteira',
     }
 
 
 def _success_result(path: list, visited: set, expanded: int,
                     elapsed_ms: float, max_frontier: int) -> dict:
     steps = len(path) - 1
+    desempenho = -0.7 * steps - 0.05 * expanded - 0.20 * elapsed_ms - 0.05 * max_frontier
     return {
         'sucesso':      True,
         'caminho':         path,
         'custo':         steps,
         'passos':        steps,
-        'explorados':     len(visited),
         'expandidos':     expanded,
         'tempo_ms':      elapsed_ms,
         'fronteira_max': max_frontier,
         '_conjunto_explorados': visited,
+        'desempenho': desempenho,
+        'formula_desempenho': 'J = - 0.7*Custo - 0.05*Expandidos - 0.20*Tempo - 0.05*Fronteira',
     }
 
 def bfs(maze, start, goal) -> dict:

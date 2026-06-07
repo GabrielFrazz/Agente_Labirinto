@@ -1,4 +1,3 @@
-import itertools
 import os
 import threading
 import time
@@ -594,29 +593,23 @@ class MazeApp:
                 ('Sucesso', '✓' if result['sucesso'] else '✗'),
                 ('Custo do caminho', result['custo']),
                 ('Passos', result['passos']),
-                ('Nós explorados', result['explorados']),
                 ('Nós expandidos', result['expandidos']),
                 ('Tempo (ms)', f"{result['tempo_ms']:.2f}"),
                 ('Fronteira máxima', result['fronteira_max']),
+                ('Desempenho (J)', f"{result.get('desempenho', 0):.3f}"),
+                ('Fórmula (J)', result.get('formula_desempenho', '-')),
             ]
         elif self._last_alg_type == 'local':
-            metrics = []
-            order_str = str(result.get('melhor_ordem', '-'))
-            import textwrap
-            wrapped = textwrap.wrap(order_str, width=28)
-            if not wrapped:
-                wrapped = ['-']
-            metrics.append(('Melhor ordem', wrapped[0]))
-            for line in wrapped[1:]:
-                metrics.append((' ', line))
-                
-            metrics.extend([
+            metrics = [
+                ('Melhor ordem', str(result.get('melhor_ordem', '-'))),
                 ('Melhor custo', result['melhor_custo']),
                 ('Pior custo', result['pior_custo']),
                 ('Custo médio', f"{result['custo_medio']:.2f}"),
                 ('Tempo (ms)', f"{result['tempo_ms']:.2f}"),
                 ('Iterações', result.get('iteracoes', '-')),
-            ])
+                ('Desempenho (J)', f"{result.get('desempenho', 0):.3f}"),
+                ('Fórmula (J)', result.get('formula_desempenho', '-')),
+            ]
             if 'execucoes' in result:
                 metrics.append(('Execuções (Runs)', result['execucoes']))
             elif 'reinicializacoes' in result:
@@ -632,11 +625,27 @@ class MazeApp:
                 ('Custo ótimo offline', result.get('otimo_offline', '-')),
                 ('Razão online/offline',
                  f"{result['razao_online']:.2f}" if result.get('razao_online') else '-'),
+                ('Desempenho (J)', f"{result.get('desempenho', 0):.3f}"),
+                ('Fórmula (J)', result.get('formula_desempenho', '-')),
             ]
         else:
             metrics = []
 
-        for i, (metric, value) in enumerate(metrics):
+        import textwrap
+        wrapped_metrics = []
+        for metric, value in metrics:
+            val_str = str(value)
+            if len(val_str) > 28:
+                lines = textwrap.wrap(val_str, width=28)
+                if not lines:
+                    lines = ['-']
+                wrapped_metrics.append((metric, lines[0]))
+                for line in lines[1:]:
+                    wrapped_metrics.append((' ', line))
+            else:
+                wrapped_metrics.append((metric, val_str))
+
+        for i, (metric, value) in enumerate(wrapped_metrics):
             tag = 'even' if i % 2 == 0 else 'odd'
             tree.insert('', tk.END, values=(metric, value), tags=(tag,))
 
