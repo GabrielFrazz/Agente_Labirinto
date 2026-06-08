@@ -141,7 +141,7 @@ class MazeApp:
         self._processing = False
         self._results_history = []
         self.maze_path: str = ''
-        self.results_dir = os.path.join(os.path.expanduser('~'), 'MazeSolver_Results')
+        self.results_dir = os.path.join(os.path.expanduser('~'), 'MazeSolver')
         self._prev_alg: str = 'A*'
 
         style = ttk.Style()
@@ -360,7 +360,7 @@ class MazeApp:
                 from core.maze_generator import generate_maze_string
                 maze_str = generate_maze_string(w, h, c)
                 
-                mazes_dir = os.path.join(BASE_DIR, 'mazes')
+                mazes_dir = os.path.join(self.results_dir, 'mazes_gerados')
                 os.makedirs(mazes_dir, exist_ok=True)
                 
                 idx = 1

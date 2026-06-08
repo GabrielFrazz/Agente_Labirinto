@@ -134,4 +134,4 @@ Ao concluir uma busca com sucesso, o aplicativo salva automaticamente:
 - **Planilhas** em `.csv`
 - **Gráficos comparativos** em `.png`
 
-Os arquivos são gravados na pasta `MazeSolver_Results`, localizada na **pasta pessoal** do usuário. Você pode acessá-la diretamente pelo botão **"Abrir"** no painel lateral da aplicação, ou alterar o diretório de destino no canto inferior direito da aplicação.
+Os arquivos são gravados na pasta `MazeSolver`, localizada na **pasta pessoal** do usuário. Você pode acessá-la diretamente pelo botão **"Abrir"** no painel lateral da aplicação, ou alterar o diretório de destino no canto superior direito da aplicação.
