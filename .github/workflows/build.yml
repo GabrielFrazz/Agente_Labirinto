@@ -81,12 +81,12 @@ jobs:
           ### Notas da Atualização (v1.0.7)
           - **Assets**: Novos labirintos para teste.
           
-          ### Funcionalidades (v1.0)
+          ### Funcionalidades 
           - Execução e visualização de algoritmos de busca não informada e heurística (BFS, DFS, UCS, A*, Greedy).
           - Otimização de rotas com múltiplos pontos de coleta utilizando Busca Local (Hill-Climbing e Simulated Annealing).
           - Análise em tempo real do ambiente através de um Agente Online A*.
           - Geração automática de métricas, exportação de resultados (CSV) e gráficos de convergência.
-          - Interface gráfica minimalista com controle de velocidade e monitoramento detalhado de execução.
+          - Interface gráfica com controle de velocidade e monitoramento detalhado de execução.
           
           ### Downloads Disponíveis
           - **Windows**: 
