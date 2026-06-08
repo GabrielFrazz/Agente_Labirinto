@@ -154,5 +154,14 @@ def compute_online_ratio(online_result: dict, real_maze) -> dict:
         online_result["caminho_offline"] = []
         online_result["razao_online"] = None
 
+    if online_result["razao_online"] is not None:
+        razao = online_result["razao_online"] * 100
+    else:
+        razao = 100.0
+        
+    desempenho = -0.4 * online_result["custo_real"] - 0.3 * online_result["celulas_revisitadas"] - 0.2 * online_result["replanejamentos"] - 0.1 * razao
+    online_result["desempenho"] = desempenho
+    online_result["formula_desempenho"] = "J = -0.4*CustoReal - 0.3*Revisitas - 0.2*Replan - 0.1*(RazaoOnline*100)"
+
     return online_result
 

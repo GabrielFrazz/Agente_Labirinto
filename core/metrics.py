@@ -27,16 +27,42 @@ def save_csv(rows: list[dict], filepath: str, append: bool = False) -> None:
     if dirpath:
         os.makedirs(dirpath, exist_ok=True)
 
-    fieldnames = list(rows[0].keys())
-    
-    file_exists = os.path.exists(filepath)
-    mode = "a" if append else "w"
+    new_keys = []
+    for r in rows:
+        for k in r.keys():
+            if k not in new_keys:
+                new_keys.append(k)
 
-    with open(filepath, mode=mode, newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=fieldnames)
-        if not (append and file_exists):
-            writer.writeheader()
-        writer.writerows(rows)
+    existing_rows = []
+    if append and os.path.exists(filepath):
+        try:
+            with open(filepath, "r", newline="", encoding="utf-8") as fh:
+                reader = csv.DictReader(fh)
+                existing_rows = list(reader)
+                if reader.fieldnames:
+                    for k in reader.fieldnames:
+                        if k not in new_keys:
+                            new_keys.append(k)
+        except Exception:
+            pass
+
+    preferred_order = [
+        "algoritmo", "sucesso", "melhor_ordem", "melhor_custo", "pior_custo", "custo_medio",
+        "custo", "passos", "expandidos", "movimentos_totais", "custo_real",
+        "celulas_reveladas", "celulas_revisitadas", "replanejamentos",
+        "otimo_offline", "razao_online",
+        "iteracoes", "tempo_ms", "T0", "alfa", 
+        "execucoes", "reinicializacoes", 
+        "desempenho", "formula_desempenho"
+    ]
+    
+    new_keys.sort(key=lambda k: preferred_order.index(k) if k in preferred_order else 999)
+
+    all_rows = existing_rows + rows
+    with open(filepath, mode="w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=new_keys)
+        writer.writeheader()
+        writer.writerows(all_rows)
 
 
 def plot_convergence(
