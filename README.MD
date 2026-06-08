@@ -105,7 +105,7 @@ O aplicativo lê arquivos de texto (`.txt`). Os caracteres reconhecidos são:
 | ` ` | Caminho livre |        ✓          |
 | `A` | Ponto de início | ✓ (exatamente um) |
 | `B` | Objetivo final | ✓ (exatamente um) |
-| `C` | Ponto de coleta (Hill Climbing / SA) |     Opcional      |
+| `C` | Ponto de coleta (Hill Climbing / SA) |     Opcional (Múltiplos)     |
 
 **Exemplo:**
 ```

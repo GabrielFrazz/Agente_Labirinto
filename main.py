@@ -1,3 +1,9 @@
+# Alunos: 
+
+# - Carlos Gabriel de Oliveira Frazão - 22.1.8100
+# - Patrick Peres Nicolini - 22.1.8103
+# - Luan Ferreira Machado - 22.1.8020
+
 import io
 import os
 import sys
